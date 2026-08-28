@@ -81,11 +81,6 @@
         .design-panel {
             background: #1a1a2e; padding: 15px; border-radius: 8px; margin: 15px 0;
         }
-        .design-panel .form-row { align-items: center; }
-        .color-picker {
-            width: 50px; height: 40px; border: none; border-radius: 6px; cursor: pointer;
-            background: transparent;
-        }
         .checkbox-group { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
         .checkbox-group input[type="checkbox"] { width: 20px; height: 20px; accent-color: #ffd700; }
         .footer { text-align: center; margin-top: 30px; color: #555; font-size: 14px; }
@@ -186,34 +181,13 @@
         <div class="design-panel">
             <h3>Настройки внешнего вида игры</h3>
             <div class="form-row">
-                <div class="form-group">
-                    <label>Цвет фона игры</label>
-                    <input type="color" id="bgColor" value="#0f0f1f">
-                </div>
-                <div class="form-group">
-                    <label>Цвет карточек (контейнера)</label>
-                    <input type="color" id="cardColor" value="#1a1a2e">
-                </div>
-                <div class="form-group">
-                    <label>Цвет кнопок (основной)</label>
-                    <input type="color" id="btnColor" value="#ffd700">
-                </div>
-                <div class="form-group">
-                    <label>Цвет текста на кнопках</label>
-                    <input type="color" id="btnTextColor" value="#1a1a2e">
-                </div>
-                <div class="form-group">
-                    <label>Цвет текста (заголовки)</label>
-                    <input type="color" id="textColor" value="#ffffff">
-                </div>
-                <div class="form-group">
-                    <label>Цвет кнопок букв</label>
-                    <input type="color" id="letterBtnColor" value="#2a2a4a">
-                </div>
-                <div class="form-group">
-                    <label>Цвет текста на буквах</label>
-                    <input type="color" id="letterTextColor" value="#ffffff">
-                </div>
+                <div class="form-group"><label>Цвет фона игры</label><input type="color" id="bgColor" value="#0f0f1f"></div>
+                <div class="form-group"><label>Цвет карточек (контейнера)</label><input type="color" id="cardColor" value="#1a1a2e"></div>
+                <div class="form-group"><label>Цвет кнопок (основной)</label><input type="color" id="btnColor" value="#ffd700"></div>
+                <div class="form-group"><label>Цвет текста на кнопках</label><input type="color" id="btnTextColor" value="#1a1a2e"></div>
+                <div class="form-group"><label>Цвет текста (заголовки)</label><input type="color" id="textColor" value="#ffffff"></div>
+                <div class="form-group"><label>Цвет кнопок букв</label><input type="color" id="letterBtnColor" value="#2a2a4a"></div>
+                <div class="form-group"><label>Цвет текста на буквах</label><input type="color" id="letterTextColor" value="#ffffff"></div>
             </div>
             <div class="checkbox-group">
                 <input type="checkbox" id="useCustomColors" checked>
@@ -515,7 +489,8 @@ function generateGameHTML() {
         alert('Добавьте хотя бы один уровень!');
         return null;
     }
- // Берём только первые baseLevelsCount уровней для вшивания
+
+    // Берём только первые baseLevelsCount уровней для вшивания
     const baseLevels = levels.slice(0, baseLevelsCount);
     const totalBase = baseLevels.length;
 
@@ -528,8 +503,7 @@ function generateGameHTML() {
     // Проверяем, есть ли URL для подгрузки
     const hasApi = !!levelsApiUrl;
 
-    return `
-<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -610,7 +584,7 @@ function generateGameHTML() {
             margin: 15px 0;
             min-height: 50px;
         }
- .answer-slot {
+        .answer-slot {
             width: 36px;
             height: 44px;
             border-bottom: 3px solid ${btnColor};
@@ -681,7 +655,7 @@ function generateGameHTML() {
             font-size: 14px;
             margin-top: 10px;
         }
-   .history-toggle:hover { background: #3a3a5a; }
+        .history-toggle:hover { background: #3a3a5a; }
         .history-panel {
             background: #0f0f1f;
             border-radius: 8px;
@@ -753,7 +727,7 @@ function generateGameHTML() {
 
         <div class="message" id="message"></div>
 
-<button class="btn-next" id="nextBtn" disabled>Далее →</button>
+        <button class="btn-next" id="nextBtn" disabled>Далее →</button>
         <button class="load-more-btn" id="loadMoreBtn" style="display:none;">📥 Загрузить новые уровни</button>
         <button class="history-toggle" id="historyToggle">📊 История уровней</button>
         <div class="history-panel" id="historyPanel"></div>
@@ -831,10 +805,11 @@ class SoundFX {
     }
 }
 const sound = new SoundFX();
+
 // ============================================================
 // 3. ОСНОВНАЯ ЛОГИКА ИГРЫ
 // ============================================================
-let allLevels = [];        // все загруженные уровни (включая подгруженные)
+let allLevels = [];
 let currentLevel = 0;
 let coins = START_COINS;
 let answerWord = '';
@@ -845,10 +820,9 @@ let gameCompleted = false;
 let hintUsed = { revealLetter: false, removeExtra: false, showAnswer: false };
 let levelHistory = [];
 let isLoading = false;
-let currentPage = 0;        // сколько порций уже подгружено
-let hasMoreLevels = true;   // есть ли ещё уровни на сервере
+let currentPage = 0;
+let hasMoreLevels = true;
 
-// DOM элементы
 const levelNum = document.getElementById('levelNum');
 const totalLevels = document.getElementById('totalLevels');
 const coinDisplay = document.getElementById('coinDisplay');
@@ -871,7 +845,6 @@ const hintRevealLetter = document.getElementById('hintRevealLetter');
 const hintRemoveExtra = document.getElementById('hintRemoveExtra');
 const hintShowAnswer = document.getElementById('hintShowAnswer');
 
-// Инициализация звука при первом клике
 document.addEventListener('click', () => sound.init(), { once: true });
 soundToggle.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -880,8 +853,7 @@ soundToggle.addEventListener('click', (e) => {
 });
 
 function initGame() {
-    // Загружаем базовые уровни
-    allLevels = BASE_LEVELS.slice(); // копия
+    allLevels = BASE_LEVELS.slice();
     currentPage = 0;
     hasMoreLevels = true;
     currentLevel = 0;
@@ -895,7 +867,6 @@ function initGame() {
     loadMoreBtn.textContent = '📥 Загрузить новые уровни';
     totalLevels.textContent = allLevels.length;
     if (allLevels.length === 0) {
-        // если нет даже базовых, пытаемся подгрузить
         loadMoreLevels(true);
     } else {
         loadLevel(0);
@@ -903,7 +874,6 @@ function initGame() {
     updateHistory();
 }
 
-// Загрузка следующей порции уровней с сервера
 async function loadMoreLevels(force = false) {
     if (isLoading || !LEVELS_API_URL) return;
     if (!hasMoreLevels && !force) {
@@ -927,16 +897,12 @@ async function loadMoreLevels(force = false) {
             isLoading = false;
             return;
         }
-
- // Добавляем новые уровни
         allLevels = allLevels.concat(newLevels);
         currentPage++;
         totalLevels.textContent = allLevels.length;
-        // Если мы были на последнем уровне, идём дальше
         if (currentLevel >= allLevels.length - 1) {
             loadLevel(currentLevel + 1);
         } else {
-            // Просто обновляем информацию
             loadMoreBtn.style.display = 'none';
         }
         loadMoreBtn.textContent = '📥 Загрузить новые уровни';
@@ -952,9 +918,7 @@ async function loadMoreLevels(force = false) {
 
 function loadLevel(index) {
     if (index >= allLevels.length) {
-        // Все загруженные уровни пройдены
         if (LEVELS_API_URL && hasMoreLevels) {
-            // Показываем кнопку загрузки
             loadMoreBtn.style.display = 'block';
             nextBtn.disabled = true;
             nextBtn.textContent = '📥 Загрузить новые уровни';
@@ -963,7 +927,6 @@ function loadLevel(index) {
                 loadMoreLevels();
             }
         } else {
-            // Нет API или все уровни загружены
             loadMoreBtn.style.display = 'none';
             showGameOver();
         }
@@ -978,7 +941,7 @@ function loadLevel(index) {
     message.textContent = '';
     nextBtn.disabled = true;
     nextBtn.textContent = 'Далее →';
-    nextBtn.onclick = null; // убираем старый обработчик
+    nextBtn.onclick = null;
 
     levelNum.textContent = index + 1;
     totalLevels.textContent = allLevels.length;
@@ -995,7 +958,6 @@ function loadLevel(index) {
     updateProgress();
     loadMoreBtn.style.display = 'none';
 }
-
 
 function generateLetters() {
     const uniqueAnswer = [...new Set(answerWord)];
@@ -1065,7 +1027,6 @@ function onLetterClick(letter) {
     updateCoins();
 }
 
-
 function updateCoins() { coinDisplay.textContent = coins; }
 
 function updateHintButtons() {
@@ -1075,7 +1036,6 @@ function updateHintButtons() {
     hintShowAnswer.disabled = (coins < COST_SHOW_ANSWER || hintUsed.showAnswer || isLevelComplete);
 }
 
-// Подсказка: открыть одну случайную букву
 hintRevealLetter.addEventListener('click', () => {
     if (coins < COST_REVEAL_LETTER || hintUsed.revealLetter || !nextBtn.disabled) return;
     const unrevealed = answerWord.split('').filter(ch => !guessedLetters.includes(ch));
@@ -1107,7 +1067,6 @@ hintRevealLetter.addEventListener('click', () => {
     }
 });
 
-// Убрать лишние
 hintRemoveExtra.addEventListener('click', () => {
     if (coins < COST_REMOVE_EXTRA || hintUsed.removeExtra || !nextBtn.disabled) return;
     const toRemove = allLetters.filter(ch => !answerWord.includes(ch) && !usedLetters.includes(ch));
@@ -1122,7 +1081,6 @@ hintRemoveExtra.addEventListener('click', () => {
     message.textContent = '🧹 Лишние буквы убраны!';
 });
 
-// Показать ответ
 hintShowAnswer.addEventListener('click', () => {
     if (coins < COST_SHOW_ANSWER || hintUsed.showAnswer || !nextBtn.disabled) return;
     for (let ch of answerWord) if (!guessedLetters.includes(ch)) guessedLetters.push(ch);
@@ -1144,13 +1102,11 @@ hintShowAnswer.addEventListener('click', () => {
     updateHistory();
 });
 
-// Кнопка "Далее"
 nextBtn.addEventListener('click', () => {
     currentLevel++;
     loadLevel(currentLevel);
 });
 
-// Кнопка "Загрузить новые уровни"
 loadMoreBtn.addEventListener('click', loadMoreLevels);
 
 function showGameOver() {
@@ -1163,7 +1119,7 @@ function showGameOver() {
 restartBtn.addEventListener('click', initGame);
 
 function updateProgress() {
-    progressText.textContent = `Уровень ${currentLevel+1} из ${allLevels.length}`;
+    progressText.textContent = 'Уровень ' + (currentLevel+1) + ' из ' + allLevels.length;
 }
 
 function updateHistory() {
@@ -1177,7 +1133,7 @@ function updateHistory() {
         const div = document.createElement('div');
         div.className = 'history-item';
         const text = document.createElement('span');
-        text.textContent = `Уровень ${entry.levelIndex+1}`;
+        text.textContent = 'Уровень ' + (entry.levelIndex+1);
         div.appendChild(text);
         const status = document.createElement('span');
         status.className = 'status' + (entry.passed ? '' : ' fail');
@@ -1186,15 +1142,16 @@ function updateHistory() {
         historyPanel.appendChild(div);
     }
 }
-// ============================================================
-// 4. СТАРТ
-// ============================================================
-initGame();
 
+historyToggle.addEventListener('click', () => {
+    historyPanel.classList.toggle('open');
+    if (historyPanel.classList.contains('open')) updateHistory();
+});
+
+initGame();
 </script>
 </body>
-</html>
-    `;
+</html>`;
 }
 
 // ============================================================
@@ -1231,7 +1188,6 @@ document.getElementById('closePreviewBtn').addEventListener('click', () => {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-constructor').classList.add('active');
 });
-
 
 // ============================================================
 // 6. Сохранение/загрузка проекта
