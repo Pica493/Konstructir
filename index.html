@@ -1231,3 +1231,104 @@ document.getElementById('closePreviewBtn').addEventListener('click', () => {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-constructor').classList.add('active');
 });
+
+
+// ============================================================
+// 6. Сохранение/загрузка проекта
+// ============================================================
+document.getElementById('saveProjectBtn').addEventListener('click', () => {
+    const data = {
+        levels: levels,
+        costRevealLetter: parseInt(document.getElementById('costRevealLetter').value) || 20,
+        costRemoveExtra: parseInt(document.getElementById('costRemoveExtra').value) || 30,
+        costShowAnswer: parseInt(document.getElementById('costShowAnswer').value) || 50,
+        startCoins: parseInt(document.getElementById('startCoins').value) || 100,
+        levelBonus: parseInt(document.getElementById('levelBonus').value) || 10,
+        soundEnabled: document.getElementById('soundEnabled').checked,
+        levelsApiUrl: document.getElementById('levelsApiUrl').value.trim(),
+        baseLevelsCount: parseInt(document.getElementById('baseLevelsCount').value) || 100,
+        batchSize: parseInt(document.getElementById('batchSize').value) || 50,
+        autoLoadMore: document.getElementById('autoLoadMore').checked,
+        design: {
+            bgColor: document.getElementById('bgColor').value,
+            cardColor: document.getElementById('cardColor').value,
+            btnColor: document.getElementById('btnColor').value,
+            btnTextColor: document.getElementById('btnTextColor').value,
+            textColor: document.getElementById('textColor').value,
+            letterBtnColor: document.getElementById('letterBtnColor').value,
+            letterTextColor: document.getElementById('letterTextColor').value,
+            useCustomColors: document.getElementById('useCustomColors').checked
+        }
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'quiz_project.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
+
+document.getElementById('loadProjectBtn').addEventListener('click', () => {
+    document.getElementById('loadProjectInput').click();
+});
+
+document.getElementById('loadProjectInput').addEventListener('change', function(e) {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            const data = JSON.parse(ev.target.result);
+            levels = data.levels || [];
+            document.getElementById('costRevealLetter').value = data.costRevealLetter || 20;
+            document.getElementById('costRemoveExtra').value = data.costRemoveExtra || 30;
+            document.getElementById('costShowAnswer').value = data.costShowAnswer || 50;
+            document.getElementById('startCoins').value = data.startCoins || 100;
+            document.getElementById('levelBonus').value = data.levelBonus || 10;
+            document.getElementById('soundEnabled').checked = data.soundEnabled !== undefined ? data.soundEnabled : true;
+            document.getElementById('levelsApiUrl').value = data.levelsApiUrl || '';
+            document.getElementById('baseLevelsCount').value = data.baseLevelsCount || 100;
+            document.getElementById('batchSize').value = data.batchSize || 50;
+            document.getElementById('autoLoadMore').checked = data.autoLoadMore !== undefined ? data.autoLoadMore : true;
+            if (data.design) {
+                for (let key in defaultColors) {
+                    if (data.design[key]) document.getElementById(key).value = data.design[key];
+                }
+                document.getElementById('useCustomColors').checked = data.design.useCustomColors !== undefined ? data.design.useCustomColors : true;
+            } else setDefaultColors();
+            renderLevelList();
+            saveProjectToStorage();
+            alert('Проект загружен!');
+        } catch (e) {
+            alert('Ошибка загрузки файла.');
+        }
+    };
+    reader.readAsText(file);
+    this.value = '';
+});
+
+// ============================================================
+// 7. Переключение вкладок
+// ============================================================
+document.querySelectorAll('.tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tabId = btn.dataset.tab;
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
+    });
+});
+
+// ============================================================
+// 8. Инициализация
+// ============================================================
+loadProjectFromStorage();
+renderLevelList();
+</script>
+</body>
+</html>
