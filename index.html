@@ -462,7 +462,7 @@ document.querySelectorAll('#bgColor, #cardColor, #btnColor, #btnTextColor, #text
 });
 
 // ============================================================
-// 4. Генерация игры с подгрузкой уровней
+// 4. Генерация игры с подгрузкой уровней (исправлена)
 // ============================================================
 function generateGameHTML() {
     const costRevealLetter = parseInt(document.getElementById('costRevealLetter').value) || 20;
@@ -499,9 +499,6 @@ function generateGameHTML() {
         answer: l.answer,
         image: l.image || ''
     }));
-
-    // Проверяем, есть ли URL для подгрузки
-    const hasApi = !!levelsApiUrl;
 
     return `<!DOCTYPE html>
 <html lang="ru">
@@ -746,13 +743,11 @@ function generateGameHTML() {
 // ============================================================
 // 1. ДАННЫЕ
 // ============================================================
-// Базовые уровни (вшитые)
 const BASE_LEVELS = ${JSON.stringify(levelsData)};
 const LEVELS_API_URL = ${JSON.stringify(levelsApiUrl)};
 const BATCH_SIZE = ${batchSize};
 const AUTO_LOAD_MORE = ${autoLoadMore};
 
-// Настройки
 const COST_REVEAL_LETTER = ${costRevealLetter};
 const COST_REMOVE_EXTRA = ${costRemoveExtra};
 const COST_SHOW_ANSWER = ${costShowAnswer};
@@ -807,7 +802,7 @@ class SoundFX {
 const sound = new SoundFX();
 
 // ============================================================
-// 3. ОСНОВНАЯ ЛОГИКА ИГРЫ
+// 3. ОСНОВНАЯ ЛОГИКА ИГРЫ (исправлена)
 // ============================================================
 let allLevels = [];
 let currentLevel = 0;
@@ -822,6 +817,7 @@ let levelHistory = [];
 let isLoading = false;
 let currentPage = 0;
 let hasMoreLevels = true;
+let isFirstLoad = true;   // флаг первой загрузки
 
 const levelNum = document.getElementById('levelNum');
 const totalLevels = document.getElementById('totalLevels');
@@ -856,6 +852,7 @@ function initGame() {
     allLevels = BASE_LEVELS.slice();
     currentPage = 0;
     hasMoreLevels = true;
+    isFirstLoad = true;
     currentLevel = 0;
     coins = START_COINS;
     gameCompleted = false;
@@ -867,6 +864,7 @@ function initGame() {
     loadMoreBtn.textContent = '📥 Загрузить новые уровни';
     totalLevels.textContent = allLevels.length;
     if (allLevels.length === 0) {
+        // Если нет базовых, пытаемся загрузить сразу
         loadMoreLevels(true);
     } else {
         loadLevel(0);
@@ -900,10 +898,17 @@ async function loadMoreLevels(force = false) {
         allLevels = allLevels.concat(newLevels);
         currentPage++;
         totalLevels.textContent = allLevels.length;
-        if (currentLevel >= allLevels.length - 1) {
-            loadLevel(currentLevel + 1);
+        // Если это был первый запуск и мы загрузили уровни, переходим к первому уровню
+        if (isFirstLoad) {
+            isFirstLoad = false;
+            loadLevel(0);
         } else {
-            loadMoreBtn.style.display = 'none';
+            // Если мы на последнем уровне, загружаем следующий
+            if (currentLevel >= allLevels.length - 1) {
+                loadLevel(currentLevel + 1);
+            } else {
+                loadMoreBtn.style.display = 'none';
+            }
         }
         loadMoreBtn.textContent = '📥 Загрузить новые уровни';
         loadMoreBtn.disabled = false;
@@ -1148,7 +1153,11 @@ historyToggle.addEventListener('click', () => {
     if (historyPanel.classList.contains('open')) updateHistory();
 });
 
+// ============================================================
+// 4. СТАРТ
+// ============================================================
 initGame();
+
 </script>
 </body>
 </html>`;
