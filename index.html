@@ -462,7 +462,7 @@ document.querySelectorAll('#bgColor, #cardColor, #btnColor, #btnTextColor, #text
 });
 
 // ============================================================
-// 4. Генерация игры с подгрузкой уровней (исправлена)
+// 4. Генерация игры (переписана через массив для надёжности)
 // ============================================================
 function generateGameHTML() {
     const costRevealLetter = parseInt(document.getElementById('costRevealLetter').value) || 20;
@@ -490,677 +490,436 @@ function generateGameHTML() {
         return null;
     }
 
-    // Берём только первые baseLevelsCount уровней для вшивания
     const baseLevels = levels.slice(0, baseLevelsCount);
     const totalBase = baseLevels.length;
-
     const levelsData = baseLevels.map(l => ({
         question: l.question,
         answer: l.answer,
         image: l.image || ''
     }));
 
-    return `<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Викторина</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: ${bgColor};
-            color: ${textColor};
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 16px;
-        }
-        .game-container {
-            max-width: 450px;
-            width: 100%;
-            background: ${cardColor};
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.6);
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            font-size: 18px;
-            color: ${textColor};
-        }
-        .header .coins {
-            background: ${btnColor};
-            color: ${btnTextColor};
-            padding: 4px 14px;
-            border-radius: 30px;
-            font-weight: bold;
-        }
-        .question-block { text-align: center; margin-bottom: 20px; }
-        .question-block img {
-            max-width: 100%;
-            max-height: 250px;
-            border-radius: 12px;
-            background: #000;
-            object-fit: contain;
-        }
-        .question-block h2 { margin-top: 12px; font-size: 22px; color: ${textColor}; }
-        .letter-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-            margin: 20px 0;
-        }
-        .letter-btn {
-            width: 44px;
-            height: 44px;
-            background: ${letterBtnColor};
-            border: none;
-            border-radius: 10px;
-            color: ${letterTextColor};
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.1s;
-            box-shadow: 0 4px 0 #0a0a1a;
-        }
-        .letter-btn:active { transform: translateY(4px); box-shadow: none; }
-        .letter-btn.used { opacity: 0.3; pointer-events: none; }
-        .letter-btn.correct { background: #27ae60; }
-        .answer-display {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin: 15px 0;
-            min-height: 50px;
-        }
-        .answer-slot {
-            width: 36px;
-            height: 44px;
-            border-bottom: 3px solid ${btnColor};
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 28px;
-            font-weight: bold;
-            color: ${textColor};
-        }
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            margin: 15px 0;
-        }
-        .controls button {
-            background: ${letterBtnColor};
-            border: none;
-            border-radius: 30px;
-            padding: 8px 18px;
-            color: ${letterTextColor};
-            font-size: 14px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: 0.1s;
-            box-shadow: 0 3px 0 #0a0a1a;
-        }
-        .controls button:active { transform: translateY(3px); box-shadow: none; }
-        .controls button:disabled { opacity: 0.4; pointer-events: none; }
-        .controls button .cost { color: ${btnColor}; }
-        .message {
-            text-align: center;
-            margin: 15px 0;
-            font-size: 18px;
-            min-height: 30px;
-            color: ${textColor};
-        }
-        .btn-next {
-            background: ${btnColor};
-            color: ${btnTextColor};
-            border: none;
-            border-radius: 30px;
-            padding: 12px 30px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            transition: 0.1s;
-            box-shadow: 0 4px 0 #b8960f;
-        }
-        .btn-next:active { transform: translateY(4px); box-shadow: none; }
-        .btn-next:disabled { opacity: 0.4; pointer-events: none; }
-        .footer-progress { text-align: center; margin-top: 15px; color: #555; }
-        .game-over { text-align: center; padding: 30px 0; }
-        .game-over h2 { color: ${btnColor}; font-size: 28px; }
-        .game-over button { margin-top: 20px; }
-        .history-toggle {
-            background: ${letterBtnColor};
-            border: none;
-            color: ${letterTextColor};
-            padding: 6px 14px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        .history-toggle:hover { background: #3a3a5a; }
-        .history-panel {
-            background: #0f0f1f;
-            border-radius: 8px;
-            padding: 10px;
-            margin: 10px 0;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-        }
-        .history-panel.open { display: block; }
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 4px 8px;
-            border-bottom: 1px solid #222;
-            font-size: 14px;
-            color: ${textColor};
-        }
-        .history-item .status { color: #27ae60; }
-        .history-item .status.fail { color: #e94560; }
-        .sound-toggle {
-            background: transparent;
-            border: none;
-            color: ${textColor};
-            font-size: 22px;
-            cursor: pointer;
-        }
-        .load-more-btn {
-            background: ${btnColor};
-            color: ${btnTextColor};
-            border: none;
-            border-radius: 30px;
-            padding: 12px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 15px;
-            box-shadow: 0 4px 0 #b8960f;
-            transition: 0.1s;
-        }
-        .load-more-btn:active { transform: translateY(4px); box-shadow: none; }
-        .load-more-btn:disabled { opacity: 0.4; pointer-events: none; }
-    </style>
-</head>
-<body>
-<div class="game-container" id="app">
-    <div class="header">
-        <span>Уровень <span id="levelNum">1</span>/<span id="totalLevels">${totalBase}</span></span>
-        <span class="coins">🪙 <span id="coinDisplay">${startCoins}</span></span>
-        <button class="sound-toggle" id="soundToggle">${soundEnabled ? '🔊' : '🔇'}</button>
-    </div>
+    // Собираем HTML через массив, чтобы избежать проблем с бэктиками
+    const htmlLines = [];
+    htmlLines.push('<!DOCTYPE html>');
+    htmlLines.push('<html lang="ru">');
+    htmlLines.push('<head>');
+    htmlLines.push('<meta charset="UTF-8">');
+    htmlLines.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">');
+    htmlLines.push('<title>Викторина</title>');
+    htmlLines.push('<style>');
+    htmlLines.push('* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }');
+    htmlLines.push('body { font-family: \'Segoe UI\', sans-serif; background: ' + bgColor + '; color: ' + textColor + '; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }');
+    htmlLines.push('.game-container { max-width: 450px; width: 100%; background: ' + cardColor + '; border-radius: 20px; padding: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.6); }');
+    htmlLines.push('.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 18px; color: ' + textColor + '; }');
+    htmlLines.push('.header .coins { background: ' + btnColor + '; color: ' + btnTextColor + '; padding: 4px 14px; border-radius: 30px; font-weight: bold; }');
+    htmlLines.push('.question-block { text-align: center; margin-bottom: 20px; }');
+    htmlLines.push('.question-block img { max-width: 100%; max-height: 250px; border-radius: 12px; background: #000; object-fit: contain; }');
+    htmlLines.push('.question-block h2 { margin-top: 12px; font-size: 22px; color: ' + textColor + '; }');
+    htmlLines.push('.letter-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px 0; }');
+    htmlLines.push('.letter-btn { width: 44px; height: 44px; background: ' + letterBtnColor + '; border: none; border-radius: 10px; color: ' + letterTextColor + '; font-size: 24px; font-weight: bold; cursor: pointer; transition: 0.1s; box-shadow: 0 4px 0 #0a0a1a; }');
+    htmlLines.push('.letter-btn:active { transform: translateY(4px); box-shadow: none; }');
+    htmlLines.push('.letter-btn.used { opacity: 0.3; pointer-events: none; }');
+    htmlLines.push('.letter-btn.correct { background: #27ae60; }');
+    htmlLines.push('.answer-display { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 15px 0; min-height: 50px; }');
+    htmlLines.push('.answer-slot { width: 36px; height: 44px; border-bottom: 3px solid ' + btnColor + '; display: inline-flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; color: ' + textColor + '; }');
+    htmlLines.push('.controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 15px 0; }');
+    htmlLines.push('.controls button { background: ' + letterBtnColor + '; border: none; border-radius: 30px; padding: 8px 18px; color: ' + letterTextColor + '; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.1s; box-shadow: 0 3px 0 #0a0a1a; }');
+    htmlLines.push('.controls button:active { transform: translateY(3px); box-shadow: none; }');
+    htmlLines.push('.controls button:disabled { opacity: 0.4; pointer-events: none; }');
+    htmlLines.push('.controls button .cost { color: ' + btnColor + '; }');
+    htmlLines.push('.message { text-align: center; margin: 15px 0; font-size: 18px; min-height: 30px; color: ' + textColor + '; }');
+    htmlLines.push('.btn-next { background: ' + btnColor + '; color: ' + btnTextColor + '; border: none; border-radius: 30px; padding: 12px 30px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.1s; box-shadow: 0 4px 0 #b8960f; }');
+    htmlLines.push('.btn-next:active { transform: translateY(4px); box-shadow: none; }');
+    htmlLines.push('.btn-next:disabled { opacity: 0.4; pointer-events: none; }');
+    htmlLines.push('.footer-progress { text-align: center; margin-top: 15px; color: #555; }');
+    htmlLines.push('.game-over { text-align: center; padding: 30px 0; }');
+    htmlLines.push('.game-over h2 { color: ' + btnColor + '; font-size: 28px; }');
+    htmlLines.push('.game-over button { margin-top: 20px; }');
+    htmlLines.push('.history-toggle { background: ' + letterBtnColor + '; border: none; color: ' + letterTextColor + '; padding: 6px 14px; border-radius: 30px; cursor: pointer; font-size: 14px; margin-top: 10px; }');
+    htmlLines.push('.history-toggle:hover { background: #3a3a5a; }');
+    htmlLines.push('.history-panel { background: #0f0f1f; border-radius: 8px; padding: 10px; margin: 10px 0; max-height: 200px; overflow-y: auto; display: none; }');
+    htmlLines.push('.history-panel.open { display: block; }');
+    htmlLines.push('.history-item { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #222; font-size: 14px; color: ' + textColor + '; }');
+    htmlLines.push('.history-item .status { color: #27ae60; }');
+    htmlLines.push('.history-item .status.fail { color: #e94560; }');
+    htmlLines.push('.sound-toggle { background: transparent; border: none; color: ' + textColor + '; font-size: 22px; cursor: pointer; }');
+    htmlLines.push('.load-more-btn { background: ' + btnColor + '; color: ' + btnTextColor + '; border: none; border-radius: 30px; padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; box-shadow: 0 4px 0 #b8960f; transition: 0.1s; }');
+    htmlLines.push('.load-more-btn:active { transform: translateY(4px); box-shadow: none; }');
+    htmlLines.push('.load-more-btn:disabled { opacity: 0.4; pointer-events: none; }');
+    htmlLines.push('</style>');
+    htmlLines.push('</head>');
+    htmlLines.push('<body>');
+    htmlLines.push('<div class="game-container" id="app">');
+    htmlLines.push('<div class="header">');
+    htmlLines.push('<span>Уровень <span id="levelNum">1</span>/<span id="totalLevels">' + totalBase + '</span></span>');
+    htmlLines.push('<span class="coins">🪙 <span id="coinDisplay">' + startCoins + '</span></span>');
+    htmlLines.push('<button class="sound-toggle" id="soundToggle">' + (soundEnabled ? '🔊' : '🔇') + '</button>');
+    htmlLines.push('</div>');
+    htmlLines.push('<div id="gameArea">');
+    htmlLines.push('<div class="question-block">');
+    htmlLines.push('<img id="levelImage" src="" alt="Картинка">');
+    htmlLines.push('<h2 id="levelQuestion">Загрузка...</h2>');
+    htmlLines.push('</div>');
+    htmlLines.push('<div class="answer-display" id="answerDisplay"></div>');
+    htmlLines.push('<div class="letter-grid" id="letterGrid"></div>');
+    htmlLines.push('<div class="controls">');
+    htmlLines.push('<button id="hintRevealLetter" data-cost="' + costRevealLetter + '">🔍 Открыть букву <span class="cost">(' + costRevealLetter + '🪙)</span></button>');
+    htmlLines.push('<button id="hintRemoveExtra" data-cost="' + costRemoveExtra + '">🧹 Убрать лишние <span class="cost">(' + costRemoveExtra + '🪙)</span></button>');
+    htmlLines.push('<button id="hintShowAnswer" data-cost="' + costShowAnswer + '">👁 Показать ответ <span class="cost">(' + costShowAnswer + '🪙)</span></button>');
+    htmlLines.push('</div>');
+    htmlLines.push('<div class="message" id="message"></div>');
+    htmlLines.push('<button class="btn-next" id="nextBtn" disabled>Далее →</button>');
+    htmlLines.push('<button class="load-more-btn" id="loadMoreBtn" style="display:none;">📥 Загрузить новые уровни</button>');
+    htmlLines.push('<button class="history-toggle" id="historyToggle">📊 История уровней</button>');
+    htmlLines.push('<div class="history-panel" id="historyPanel"></div>');
+    htmlLines.push('</div>');
+    htmlLines.push('<div class="game-over" id="gameOverArea" style="display:none;">');
+    htmlLines.push('<h2>🎉 Поздравляем!</h2>');
+    htmlLines.push('<p style="color:' + textColor + ';">Вы прошли все уровни!</p>');
+    htmlLines.push('<button class="btn-next" id="restartBtn">🔄 Сыграть снова</button>');
+    htmlLines.push('</div>');
+    htmlLines.push('<div class="footer-progress" id="progressText"></div>');
+    htmlLines.push('</div>');
 
-    <div id="gameArea">
-        <div class="question-block">
-            <img id="levelImage" src="" alt="Картинка">
-            <h2 id="levelQuestion">Загрузка...</h2>
-        </div>
+    // Встроенный JavaScript
+    htmlLines.push('<script>');
+    htmlLines.push('const BASE_LEVELS = ' + JSON.stringify(levelsData) + ';');
+    htmlLines.push('const LEVELS_API_URL = ' + JSON.stringify(levelsApiUrl) + ';');
+    htmlLines.push('const BATCH_SIZE = ' + batchSize + ';');
+    htmlLines.push('const AUTO_LOAD_MORE = ' + autoLoadMore + ';');
+    htmlLines.push('const COST_REVEAL_LETTER = ' + costRevealLetter + ';');
+    htmlLines.push('const COST_REMOVE_EXTRA = ' + costRemoveExtra + ';');
+    htmlLines.push('const COST_SHOW_ANSWER = ' + costShowAnswer + ';');
+    htmlLines.push('const START_COINS = ' + startCoins + ';');
+    htmlLines.push('const LEVEL_BONUS = ' + levelBonus + ';');
 
-        <div class="answer-display" id="answerDisplay"></div>
+    // Код SoundFX
+    htmlLines.push('class SoundFX {');
+    htmlLines.push('constructor() { this.enabled = ' + soundEnabled + '; this.ctx = null; }');
+    htmlLines.push('init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } }');
+    htmlLines.push('playTone(freq, duration, type=\'sine\', volume=0.2) { if (!this.enabled || !this.ctx) return; try { const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.type = type; osc.frequency.value = freq; gain.gain.setValueAtTime(volume, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration); osc.connect(gain); gain.connect(this.ctx.destination); osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + duration); } catch (e) {} }');
+    htmlLines.push('correct() { this.playTone(523, 0.15, \'sine\', 0.3); }');
+    htmlLines.push('wrong() { this.playTone(300, 0.25, \'sawtooth\', 0.2); }');
+    htmlLines.push('levelComplete() { this.playTone(523, 0.15, \'sine\', 0.3); setTimeout(() => this.playTone(659, 0.15, \'sine\', 0.3), 150); setTimeout(() => this.playTone(784, 0.2, \'sine\', 0.3), 300); }');
+    htmlLines.push('hint() { this.playTone(600, 0.1, \'sine\', 0.2); }');
+    htmlLines.push('gameOver() { this.playTone(523, 0.2, \'sine\', 0.3); this.playTone(659, 0.2, \'sine\', 0.3); this.playTone(784, 0.3, \'sine\', 0.3); }');
+    htmlLines.push('toggle() { this.enabled = !this.enabled; document.getElementById(\'soundToggle\').textContent = this.enabled ? \'🔊\' : \'🔇\'; return this.enabled; }');
+    htmlLines.push('}');
+    htmlLines.push('const sound = new SoundFX();');
 
-        <div class="letter-grid" id="letterGrid"></div>
+    // Основной код игры
+    htmlLines.push('let allLevels = [];');
+    htmlLines.push('let currentLevel = 0;');
+    htmlLines.push('let coins = START_COINS;');
+    htmlLines.push('let answerWord = \'\';');
+    htmlLines.push('let guessedLetters = [];');
+    htmlLines.push('let usedLetters = [];');
+    htmlLines.push('let allLetters = [];');
+    htmlLines.push('let gameCompleted = false;');
+    htmlLines.push('let hintUsed = { revealLetter: false, removeExtra: false, showAnswer: false };');
+    htmlLines.push('let levelHistory = [];');
+    htmlLines.push('let isLoading = false;');
+    htmlLines.push('let currentPage = 0;');
+    htmlLines.push('let hasMoreLevels = true;');
+    htmlLines.push('let isFirstLoad = true;');
+    htmlLines.push('');
+    htmlLines.push('const levelNum = document.getElementById(\'levelNum\');');
+    htmlLines.push('const totalLevels = document.getElementById(\'totalLevels\');');
+    htmlLines.push('const coinDisplay = document.getElementById(\'coinDisplay\');');
+    htmlLines.push('const levelImage = document.getElementById(\'levelImage\');');
+    htmlLines.push('const levelQuestion = document.getElementById(\'levelQuestion\');');
+    htmlLines.push('const answerDisplay = document.getElementById(\'answerDisplay\');');
+    htmlLines.push('const letterGrid = document.getElementById(\'letterGrid\');');
+    htmlLines.push('const message = document.getElementById(\'message\');');
+    htmlLines.push('const nextBtn = document.getElementById(\'nextBtn\');');
+    htmlLines.push('const gameArea = document.getElementById(\'gameArea\');');
+    htmlLines.push('const gameOverArea = document.getElementById(\'gameOverArea\');');
+    htmlLines.push('const restartBtn = document.getElementById(\'restartBtn\');');
+    htmlLines.push('const progressText = document.getElementById(\'progressText\');');
+    htmlLines.push('const historyPanel = document.getElementById(\'historyPanel\');');
+    htmlLines.push('const historyToggle = document.getElementById(\'historyToggle\');');
+    htmlLines.push('const soundToggle = document.getElementById(\'soundToggle\');');
+    htmlLines.push('const loadMoreBtn = document.getElementById(\'loadMoreBtn\');');
+    htmlLines.push('');
+    htmlLines.push('const hintRevealLetter = document.getElementById(\'hintRevealLetter\');');
+    htmlLines.push('const hintRemoveExtra = document.getElementById(\'hintRemoveExtra\');');
+    htmlLines.push('const hintShowAnswer = document.getElementById(\'hintShowAnswer\');');
+    htmlLines.push('');
+    htmlLines.push('document.addEventListener(\'click\', () => sound.init(), { once: true });');
+    htmlLines.push('soundToggle.addEventListener(\'click\', (e) => { e.stopPropagation(); sound.init(); sound.toggle(); });');
+    htmlLines.push('');
+    htmlLines.push('function initGame() {');
+    htmlLines.push('allLevels = BASE_LEVELS.slice();');
+    htmlLines.push('currentPage = 0;');
+    htmlLines.push('hasMoreLevels = true;');
+    htmlLines.push('isFirstLoad = true;');
+    htmlLines.push('currentLevel = 0;');
+    htmlLines.push('coins = START_COINS;');
+    htmlLines.push('gameCompleted = false;');
+    htmlLines.push('levelHistory = [];');
+    htmlLines.push('gameOverArea.style.display = \'none\';');
+    htmlLines.push('gameArea.style.display = \'block\';');
+    htmlLines.push('loadMoreBtn.style.display = \'none\';');
+    htmlLines.push('loadMoreBtn.disabled = false;');
+    htmlLines.push('loadMoreBtn.textContent = \'📥 Загрузить новые уровни\';');
+    htmlLines.push('totalLevels.textContent = allLevels.length;');
+    htmlLines.push('if (allLevels.length === 0) { loadMoreLevels(true); } else { loadLevel(0); }');
+    htmlLines.push('updateHistory();');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('async function loadMoreLevels(force = false) {');
+    htmlLines.push('if (isLoading || !LEVELS_API_URL) return;');
+    htmlLines.push('if (!hasMoreLevels && !force) { loadMoreBtn.textContent = \'🏁 Все уровни загружены\'; loadMoreBtn.disabled = true; return; }');
+    htmlLines.push('isLoading = true;');
+    htmlLines.push('loadMoreBtn.disabled = true;');
+    htmlLines.push('loadMoreBtn.textContent = \'⏳ Загрузка...\';');
+    htmlLines.push('try {');
+    htmlLines.push('const url = `${LEVELS_API_URL}?page=${currentPage}&limit=${BATCH_SIZE}`;');
+    htmlLines.push('const response = await fetch(url);');
+    htmlLines.push('if (!response.ok) throw new Error(\'Ошибка загрузки\');');
+    htmlLines.push('const newLevels = await response.json();');
+    htmlLines.push('if (!Array.isArray(newLevels) || newLevels.length === 0) {');
+    htmlLines.push('hasMoreLevels = false;');
+    htmlLines.push('loadMoreBtn.textContent = \'🏁 Все уровни загружены\';');
+    htmlLines.push('loadMoreBtn.disabled = true;');
+    htmlLines.push('isLoading = false;');
+    htmlLines.push('return;');
+    htmlLines.push('}');
+    htmlLines.push('allLevels = allLevels.concat(newLevels);');
+    htmlLines.push('currentPage++;');
+    htmlLines.push('totalLevels.textContent = allLevels.length;');
+    htmlLines.push('if (isFirstLoad) { isFirstLoad = false; loadLevel(0); } else {');
+    htmlLines.push('if (currentLevel >= allLevels.length - 1) { loadLevel(currentLevel + 1); } else { loadMoreBtn.style.display = \'none\'; }');
+    htmlLines.push('}');
+    htmlLines.push('loadMoreBtn.textContent = \'📥 Загрузить новые уровни\';');
+    htmlLines.push('loadMoreBtn.disabled = false;');
+    htmlLines.push('isLoading = false;');
+    htmlLines.push('} catch (e) {');
+    htmlLines.push('alert(\'Не удалось загрузить новые уровни. Проверьте интернет-соединение.\');');
+    htmlLines.push('loadMoreBtn.textContent = \'🔄 Попробовать снова\';');
+    htmlLines.push('loadMoreBtn.disabled = false;');
+    htmlLines.push('isLoading = false;');
+    htmlLines.push('}');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('function loadLevel(index) {');
+    htmlLines.push('if (index >= allLevels.length) {');
+    htmlLines.push('if (LEVELS_API_URL && hasMoreLevels) {');
+    htmlLines.push('loadMoreBtn.style.display = \'block\';');
+    htmlLines.push('nextBtn.disabled = true;');
+    htmlLines.push('nextBtn.textContent = \'📥 Загрузить новые уровни\';');
+    htmlLines.push('nextBtn.onclick = loadMoreLevels;');
+    htmlLines.push('if (AUTO_LOAD_MORE) { loadMoreLevels(); }');
+    htmlLines.push('} else { loadMoreBtn.style.display = \'none\'; showGameOver(); }');
+    htmlLines.push('return;');
+    htmlLines.push('}');
+    htmlLines.push('const level = allLevels[index];');
+    htmlLines.push('answerWord = level.answer.toUpperCase();');
+    htmlLines.push('guessedLetters = [];');
+    htmlLines.push('usedLetters = [];');
+    htmlLines.push('hintUsed = { revealLetter: false, removeExtra: false, showAnswer: false };');
+    htmlLines.push('message.textContent = \'\';');
+    htmlLines.push('nextBtn.disabled = true;');
+    htmlLines.push('nextBtn.textContent = \'Далее →\';');
+    htmlLines.push('nextBtn.onclick = null;');
+    htmlLines.push('levelNum.textContent = index + 1;');
+    htmlLines.push('totalLevels.textContent = allLevels.length;');
+    htmlLines.push('levelQuestion.textContent = level.question;');
+    htmlLines.push('levelImage.src = level.image || \'\';');
+    htmlLines.push('levelImage.onerror = () => { levelImage.style.display = \'none\'; };');
+    htmlLines.push('levelImage.onload = () => { levelImage.style.display = \'block\'; };');
+    htmlLines.push('if (!level.image) levelImage.style.display = \'none\';');
+    htmlLines.push('generateLetters();');
+    htmlLines.push('updateUI();');
+    htmlLines.push('updateCoins();');
+    htmlLines.push('updateHintButtons();');
+    htmlLines.push('updateProgress();');
+    htmlLines.push('loadMoreBtn.style.display = \'none\';');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('function generateLetters() {');
+    htmlLines.push('const uniqueAnswer = [...new Set(answerWord)];');
+    htmlLines.push('const answerLetters = [...uniqueAnswer];');
+    htmlLines.push('const alphabet = \'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ\';');
+    htmlLines.push('const extra = [];');
+    htmlLines.push('for (let ch of alphabet) if (!answerWord.includes(ch) && !extra.includes(ch)) extra.push(ch);');
+    htmlLines.push('shuffleArray(extra);');
+    htmlLines.push('const neededExtra = Math.max(2, Math.floor(answerLetters.length * 1.2));');
+    htmlLines.push('const selectedExtra = extra.slice(0, neededExtra);');
+    htmlLines.push('allLetters = [...answerLetters, ...selectedExtra];');
+    htmlLines.push('shuffleArray(allLetters);');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('function shuffleArray(arr) { for (let i=arr.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }');
+    htmlLines.push('');
+    htmlLines.push('function updateUI() {');
+    htmlLines.push('answerDisplay.innerHTML = \'\';');
+    htmlLines.push('for (let ch of answerWord) {');
+    htmlLines.push('const slot = document.createElement(\'span\');');
+    htmlLines.push('slot.className = \'answer-slot\';');
+    htmlLines.push('slot.textContent = guessedLetters.includes(ch) ? ch : \'_\';');
+    htmlLines.push('answerDisplay.appendChild(slot);');
+    htmlLines.push('}');
+    htmlLines.push('letterGrid.innerHTML = \'\';');
+    htmlLines.push('for (let ch of allLetters) {');
+    htmlLines.push('const btn = document.createElement(\'button\');');
+    htmlLines.push('btn.className = \'letter-btn\';');
+    htmlLines.push('if (usedLetters.includes(ch)) btn.classList.add(\'used\');');
+    htmlLines.push('btn.textContent = ch;');
+    htmlLines.push('btn.dataset.letter = ch;');
+    htmlLines.push('btn.addEventListener(\'click\', () => onLetterClick(ch));');
+    htmlLines.push('letterGrid.appendChild(btn);');
+    htmlLines.push('}');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('function onLetterClick(letter) {');
+    htmlLines.push('if (usedLetters.includes(letter) || gameCompleted || !nextBtn.disabled) return;');
+    htmlLines.push('sound.init();');
+    htmlLines.push('usedLetters.push(letter);');
+    htmlLines.push('if (answerWord.includes(letter)) {');
+    htmlLines.push('if (!guessedLetters.includes(letter)) {');
+    htmlLines.push('guessedLetters.push(letter);');
+    htmlLines.push('sound.correct();');
+    htmlLines.push('const allGuessed = answerWord.split(\'\').every(ch => guessedLetters.includes(ch));');
+    htmlLines.push('if (allGuessed) {');
+    htmlLines.push('message.textContent = \'✅ Правильно! Уровень пройден!\';');
+    htmlLines.push('sound.levelComplete();');
+    htmlLines.push('nextBtn.disabled = false;');
+    htmlLines.push('document.querySelectorAll(\'.letter-btn\').forEach(b => { if (answerWord.includes(b.dataset.letter)) b.classList.add(\'correct\'); });');
+    htmlLines.push('coins += LEVEL_BONUS;');
+    htmlLines.push('updateCoins();');
+    htmlLines.push('levelHistory.push({ levelIndex: currentLevel, passed: true });');
+    htmlLines.push('updateHistory();');
+    htmlLines.push('} else { message.textContent = \'👍 Есть такая буква!\'; }');
+    htmlLines.push('}');
+    htmlLines.push('} else {');
+    htmlLines.push('sound.wrong();');
+    htmlLines.push('message.textContent = \'❌ Нет такой буквы!\';');
+    htmlLines.push('}');
+    htmlLines.push('updateUI();');
+    htmlLines.push('updateHintButtons();');
+    htmlLines.push('updateCoins();');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('function updateCoins() { coinDisplay.textContent = coins; }');
+    htmlLines.push('');
+    htmlLines.push('function updateHintButtons() {');
+    htmlLines.push('const isLevelComplete = !nextBtn.disabled;');
+    htmlLines.push('hintRevealLetter.disabled = (coins < COST_REVEAL_LETTER || hintUsed.revealLetter || isLevelComplete);');
+    htmlLines.push('hintRemoveExtra.disabled = (coins < COST_REMOVE_EXTRA || hintUsed.removeExtra || isLevelComplete);');
+    htmlLines.push('hintShowAnswer.disabled = (coins < COST_SHOW_ANSWER || hintUsed.showAnswer || isLevelComplete);');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('hintRevealLetter.addEventListener(\'click\', () => {');
+    htmlLines.push('if (coins < COST_REVEAL_LETTER || hintUsed.revealLetter || !nextBtn.disabled) return;');
+    htmlLines.push('const unrevealed = answerWord.split(\'\').filter(ch => !guessedLetters.includes(ch));');
+    htmlLines.push('if (unrevealed.length === 0) { message.textContent = \'Все буквы уже открыты!\'; return; }');
+    htmlLines.push('const randomChar = unrevealed[Math.floor(Math.random() * unrevealed.length)];');
+    htmlLines.push('if (!guessedLetters.includes(randomChar)) {');
+    htmlLines.push('guessedLetters.push(randomChar);');
+    htmlLines.push('if (!usedLetters.includes(randomChar)) usedLetters.push(randomChar);');
+    htmlLines.push('sound.hint();');
+    htmlLines.push('coins -= COST_REVEAL_LETTER;');
+    htmlLines.push('hintUsed.revealLetter = true;');
+    htmlLines.push('updateCoins();');
+    htmlLines.push('updateUI();');
+    htmlLines.push('updateHintButtons();');
+    htmlLines.push('message.textContent = \'🔍 Буква "\' + randomChar + \'" открыта!\';');
+    htmlLines.push('const allGuessed = answerWord.split(\'\').every(ch => guessedLetters.includes(ch));');
+    htmlLines.push('if (allGuessed) {');
+    htmlLines.push('message.textContent = \'✅ Правильно! Уровень пройден!\';');
+    htmlLines.push('sound.levelComplete();');
+    htmlLines.push('nextBtn.disabled = false;');
+    htmlLines.push('document.querySelectorAll(\'.letter-btn\').forEach(b => { if (answerWord.includes(b.dataset.letter)) b.classList.add(\'correct\'); });');
+    htmlLines.push('coins += LEVEL_BONUS;');
+    htmlLines.push('updateCoins();');
+    htmlLines.push('levelHistory.push({ levelIndex: currentLevel, passed: true });');
+    htmlLines.push('updateHistory();');
+    htmlLines.push('}');
+    htmlLines.push('}');
+    htmlLines.push('});');
+    htmlLines.push('');
+    htmlLines.push('hintRemoveExtra.addEventListener(\'click\', () => {');
+    htmlLines.push('if (coins < COST_REMOVE_EXTRA || hintUsed.removeExtra || !nextBtn.disabled) return;');
+    htmlLines.push('const toRemove = allLetters.filter(ch => !answerWord.includes(ch) && !usedLetters.includes(ch));');
+    htmlLines.push('if (toRemove.length === 0) { message.textContent = \'Лишних букв нет!\'; return; }');
+    htmlLines.push('for (let ch of toRemove) usedLetters.push(ch);');
+    htmlLines.push('sound.hint();');
+    htmlLines.push('coins -= COST_REMOVE_EXTRA;');
+    htmlLines.push('hintUsed.removeExtra = true;');
+    htmlLines.push('updateCoins();');
+    htmlLines.push('updateUI();');
+    htmlLines.push('updateHintButtons();');
+    htmlLines.push('message.textContent = \'🧹 Лишние буквы убраны!\';');
+    htmlLines.push('});');
+    htmlLines.push('');
+    htmlLines.push('hintShowAnswer.addEventListener(\'click\', () => {');
+    htmlLines.push('if (coins < COST_SHOW_ANSWER || hintUsed.showAnswer || !nextBtn.disabled) return;');
+    htmlLines.push('for (let ch of answerWord) if (!guessedLetters.includes(ch)) guessedLetters.push(ch);');
+    htmlLines.push('for (let ch of allLetters) if (!usedLetters.includes(ch)) usedLetters.push(ch);');
+    htmlLines.push('sound.hint();');
+    htmlLines.push('coins -= COST_SHOW_ANSWER;');
+    htmlLines.push('hintUsed.showAnswer = true;');
+    htmlLines.push('updateCoins();');
+    htmlLines.push('updateUI();');
+    htmlLines.push('updateHintButtons();');
+    htmlLines.push('message.textContent = \'👁 Ответ открыт!\';');
+    htmlLines.push('nextBtn.disabled = false;');
+    htmlLines.push('document.querySelectorAll(\'.letter-btn\').forEach(b => { if (answerWord.includes(b.dataset.letter)) b.classList.add(\'correct\'); });');
+    htmlLines.push('coins += LEVEL_BONUS;');
+    htmlLines.push('updateCoins();');
+    htmlLines.push('levelHistory.push({ levelIndex: currentLevel, passed: true });');
+    htmlLines.push('updateHistory();');
+    htmlLines.push('});');
+    htmlLines.push('');
+    htmlLines.push('nextBtn.addEventListener(\'click\', () => { currentLevel++; loadLevel(currentLevel); });');
+    htmlLines.push('loadMoreBtn.addEventListener(\'click\', loadMoreLevels);');
+    htmlLines.push('');
+    htmlLines.push('function showGameOver() {');
+    htmlLines.push('gameArea.style.display = \'none\';');
+    htmlLines.push('gameOverArea.style.display = \'block\';');
+    htmlLines.push('gameCompleted = true;');
+    htmlLines.push('sound.gameOver();');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('restartBtn.addEventListener(\'click\', initGame);');
+    htmlLines.push('');
+    htmlLines.push('function updateProgress() {');
+    htmlLines.push('progressText.textContent = \'Уровень \' + (currentLevel+1) + \' из \' + allLevels.length;');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('function updateHistory() {');
+    htmlLines.push('historyPanel.innerHTML = \'\';');
+    htmlLines.push('if (levelHistory.length === 0) {');
+    htmlLines.push('historyPanel.innerHTML = \'<div style="color:#555;padding:8px;">Нет пройденных уровней</div>\';');
+    htmlLines.push('return;');
+    htmlLines.push('}');
+    htmlLines.push('for (let i=0; i<levelHistory.length; i++) {');
+    htmlLines.push('const entry = levelHistory[i];');
+    htmlLines.push('const div = document.createElement(\'div\');');
+    htmlLines.push('div.className = \'history-item\';');
+    htmlLines.push('const text = document.createElement(\'span\');');
+    htmlLines.push('text.textContent = \'Уровень \' + (entry.levelIndex+1);');
+    htmlLines.push('div.appendChild(text);');
+    htmlLines.push('const status = document.createElement(\'span\');');
+    htmlLines.push('status.className = \'status\' + (entry.passed ? \'\' : \' fail\');');
+    htmlLines.push('status.textContent = entry.passed ? \'✅ Пройден\' : \'❌ Не пройден\';');
+    htmlLines.push('div.appendChild(status);');
+    htmlLines.push('historyPanel.appendChild(div);');
+    htmlLines.push('}');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('historyToggle.addEventListener(\'click\', () => {');
+    htmlLines.push('historyPanel.classList.toggle(\'open\');');
+    htmlLines.push('if (historyPanel.classList.contains(\'open\')) updateHistory();');
+    htmlLines.push('});');
+    htmlLines.push('');
+    htmlLines.push('initGame();');
+    htmlLines.push('</script>');
+    htmlLines.push('</body>');
+    htmlLines.push('</html>');
 
-        <div class="controls">
-            <button id="hintRevealLetter" data-cost="${costRevealLetter}">🔍 Открыть букву <span class="cost">(${costRevealLetter}🪙)</span></button>
-            <button id="hintRemoveExtra" data-cost="${costRemoveExtra}">🧹 Убрать лишние <span class="cost">(${costRemoveExtra}🪙)</span></button>
-            <button id="hintShowAnswer" data-cost="${costShowAnswer}">👁 Показать ответ <span class="cost">(${costShowAnswer}🪙)</span></button>
-        </div>
-
-        <div class="message" id="message"></div>
-
-        <button class="btn-next" id="nextBtn" disabled>Далее →</button>
-        <button class="load-more-btn" id="loadMoreBtn" style="display:none;">📥 Загрузить новые уровни</button>
-        <button class="history-toggle" id="historyToggle">📊 История уровней</button>
-        <div class="history-panel" id="historyPanel"></div>
-    </div>
-
-    <div class="game-over" id="gameOverArea" style="display:none;">
-        <h2>🎉 Поздравляем!</h2>
-        <p style="color:${textColor};">Вы прошли все уровни!</p>
-        <button class="btn-next" id="restartBtn">🔄 Сыграть снова</button>
-    </div>
-
-    <div class="footer-progress" id="progressText"></div>
-</div>
-
-<script>
-// ============================================================
-// 1. ДАННЫЕ
-// ============================================================
-const BASE_LEVELS = ${JSON.stringify(levelsData)};
-const LEVELS_API_URL = ${JSON.stringify(levelsApiUrl)};
-const BATCH_SIZE = ${batchSize};
-const AUTO_LOAD_MORE = ${autoLoadMore};
-
-const COST_REVEAL_LETTER = ${costRevealLetter};
-const COST_REMOVE_EXTRA = ${costRemoveExtra};
-const COST_SHOW_ANSWER = ${costShowAnswer};
-const START_COINS = ${startCoins};
-const LEVEL_BONUS = ${levelBonus};
-
-// ============================================================
-// 2. ЗВУК
-// ============================================================
-class SoundFX {
-    constructor() {
-        this.enabled = ${soundEnabled};
-        this.ctx = null;
-    }
-    init() {
-        if (!this.ctx) {
-            try {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            } catch (e) {}
-        }
-    }
-    playTone(freq, duration, type='sine', volume=0.2) {
-        if (!this.enabled || !this.ctx) return;
-        try {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = type;
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(volume, this.ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start(this.ctx.currentTime);
-            osc.stop(this.ctx.currentTime + duration);
-        } catch (e) {}
-    }
-    correct() { this.playTone(523, 0.15, 'sine', 0.3); }
-    wrong() { this.playTone(300, 0.25, 'sawtooth', 0.2); }
-    levelComplete() { 
-        this.playTone(523, 0.15, 'sine', 0.3);
-        setTimeout(() => this.playTone(659, 0.15, 'sine', 0.3), 150);
-        setTimeout(() => this.playTone(784, 0.2, 'sine', 0.3), 300);
-    }
-    hint() { this.playTone(600, 0.1, 'sine', 0.2); }
-    gameOver() { this.playTone(523, 0.2, 'sine', 0.3); this.playTone(659, 0.2, 'sine', 0.3); this.playTone(784, 0.3, 'sine', 0.3); }
-    toggle() {
-        this.enabled = !this.enabled;
-        document.getElementById('soundToggle').textContent = this.enabled ? '🔊' : '🔇';
-        return this.enabled;
-    }
-}
-const sound = new SoundFX();
-
-// ============================================================
-// 3. ОСНОВНАЯ ЛОГИКА ИГРЫ (исправлена)
-// ============================================================
-let allLevels = [];
-let currentLevel = 0;
-let coins = START_COINS;
-let answerWord = '';
-let guessedLetters = [];
-let usedLetters = [];
-let allLetters = [];
-let gameCompleted = false;
-let hintUsed = { revealLetter: false, removeExtra: false, showAnswer: false };
-let levelHistory = [];
-let isLoading = false;
-let currentPage = 0;
-let hasMoreLevels = true;
-let isFirstLoad = true;   // флаг первой загрузки
-
-const levelNum = document.getElementById('levelNum');
-const totalLevels = document.getElementById('totalLevels');
-const coinDisplay = document.getElementById('coinDisplay');
-const levelImage = document.getElementById('levelImage');
-const levelQuestion = document.getElementById('levelQuestion');
-const answerDisplay = document.getElementById('answerDisplay');
-const letterGrid = document.getElementById('letterGrid');
-const message = document.getElementById('message');
-const nextBtn = document.getElementById('nextBtn');
-const gameArea = document.getElementById('gameArea');
-const gameOverArea = document.getElementById('gameOverArea');
-const restartBtn = document.getElementById('restartBtn');
-const progressText = document.getElementById('progressText');
-const historyPanel = document.getElementById('historyPanel');
-const historyToggle = document.getElementById('historyToggle');
-const soundToggle = document.getElementById('soundToggle');
-const loadMoreBtn = document.getElementById('loadMoreBtn');
-
-const hintRevealLetter = document.getElementById('hintRevealLetter');
-const hintRemoveExtra = document.getElementById('hintRemoveExtra');
-const hintShowAnswer = document.getElementById('hintShowAnswer');
-
-document.addEventListener('click', () => sound.init(), { once: true });
-soundToggle.addEventListener('click', (e) => {
-    e.stopPropagation();
-    sound.init();
-    sound.toggle();
-});
-
-function initGame() {
-    allLevels = BASE_LEVELS.slice();
-    currentPage = 0;
-    hasMoreLevels = true;
-    isFirstLoad = true;
-    currentLevel = 0;
-    coins = START_COINS;
-    gameCompleted = false;
-    levelHistory = [];
-    gameOverArea.style.display = 'none';
-    gameArea.style.display = 'block';
-    loadMoreBtn.style.display = 'none';
-    loadMoreBtn.disabled = false;
-    loadMoreBtn.textContent = '📥 Загрузить новые уровни';
-    totalLevels.textContent = allLevels.length;
-    if (allLevels.length === 0) {
-        // Если нет базовых, пытаемся загрузить сразу
-        loadMoreLevels(true);
-    } else {
-        loadLevel(0);
-    }
-    updateHistory();
-}
-
-async function loadMoreLevels(force = false) {
-    if (isLoading || !LEVELS_API_URL) return;
-    if (!hasMoreLevels && !force) {
-        loadMoreBtn.textContent = '🏁 Все уровни загружены';
-        loadMoreBtn.disabled = true;
-        return;
-    }
-    isLoading = true;
-    loadMoreBtn.disabled = true;
-    loadMoreBtn.textContent = '⏳ Загрузка...';
-
-    try {
-        const url = `${LEVELS_API_URL}?page=${currentPage}&limit=${BATCH_SIZE}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Ошибка загрузки');
-        const newLevels = await response.json();
-        if (!Array.isArray(newLevels) || newLevels.length === 0) {
-            hasMoreLevels = false;
-            loadMoreBtn.textContent = '🏁 Все уровни загружены';
-            loadMoreBtn.disabled = true;
-            isLoading = false;
-            return;
-        }
-        allLevels = allLevels.concat(newLevels);
-        currentPage++;
-        totalLevels.textContent = allLevels.length;
-        // Если это был первый запуск и мы загрузили уровни, переходим к первому уровню
-        if (isFirstLoad) {
-            isFirstLoad = false;
-            loadLevel(0);
-        } else {
-            // Если мы на последнем уровне, загружаем следующий
-            if (currentLevel >= allLevels.length - 1) {
-                loadLevel(currentLevel + 1);
-            } else {
-                loadMoreBtn.style.display = 'none';
-            }
-        }
-        loadMoreBtn.textContent = '📥 Загрузить новые уровни';
-        loadMoreBtn.disabled = false;
-        isLoading = false;
-    } catch (e) {
-        alert('Не удалось загрузить новые уровни. Проверьте интернет-соединение.');
-        loadMoreBtn.textContent = '🔄 Попробовать снова';
-        loadMoreBtn.disabled = false;
-        isLoading = false;
-    }
-}
-
-function loadLevel(index) {
-    if (index >= allLevels.length) {
-        if (LEVELS_API_URL && hasMoreLevels) {
-            loadMoreBtn.style.display = 'block';
-            nextBtn.disabled = true;
-            nextBtn.textContent = '📥 Загрузить новые уровни';
-            nextBtn.onclick = loadMoreLevels;
-            if (AUTO_LOAD_MORE) {
-                loadMoreLevels();
-            }
-        } else {
-            loadMoreBtn.style.display = 'none';
-            showGameOver();
-        }
-        return;
-    }
-
-    const level = allLevels[index];
-    answerWord = level.answer.toUpperCase();
-    guessedLetters = [];
-    usedLetters = [];
-    hintUsed = { revealLetter: false, removeExtra: false, showAnswer: false };
-    message.textContent = '';
-    nextBtn.disabled = true;
-    nextBtn.textContent = 'Далее →';
-    nextBtn.onclick = null;
-
-    levelNum.textContent = index + 1;
-    totalLevels.textContent = allLevels.length;
-    levelQuestion.textContent = level.question;
-    levelImage.src = level.image || '';
-    levelImage.onerror = () => { levelImage.style.display = 'none'; };
-    levelImage.onload = () => { levelImage.style.display = 'block'; };
-    if (!level.image) levelImage.style.display = 'none';
-
-    generateLetters();
-    updateUI();
-    updateCoins();
-    updateHintButtons();
-    updateProgress();
-    loadMoreBtn.style.display = 'none';
-}
-
-function generateLetters() {
-    const uniqueAnswer = [...new Set(answerWord)];
-    const answerLetters = [...uniqueAnswer];
-    const alphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
-    const extra = [];
-    for (let ch of alphabet) if (!answerWord.includes(ch) && !extra.includes(ch)) extra.push(ch);
-    shuffleArray(extra);
-    const neededExtra = Math.max(2, Math.floor(answerLetters.length * 1.2));
-    const selectedExtra = extra.slice(0, neededExtra);
-    allLetters = [...answerLetters, ...selectedExtra];
-    shuffleArray(allLetters);
-}
-
-function shuffleArray(arr) { for (let i=arr.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
-
-function updateUI() {
-    answerDisplay.innerHTML = '';
-    for (let ch of answerWord) {
-        const slot = document.createElement('span');
-        slot.className = 'answer-slot';
-        slot.textContent = guessedLetters.includes(ch) ? ch : '_';
-        answerDisplay.appendChild(slot);
-    }
-    letterGrid.innerHTML = '';
-    for (let ch of allLetters) {
-        const btn = document.createElement('button');
-        btn.className = 'letter-btn';
-        if (usedLetters.includes(ch)) btn.classList.add('used');
-        btn.textContent = ch;
-        btn.dataset.letter = ch;
-        btn.addEventListener('click', () => onLetterClick(ch));
-        letterGrid.appendChild(btn);
-    }
-}
-
-function onLetterClick(letter) {
-    if (usedLetters.includes(letter) || gameCompleted || !nextBtn.disabled) return;
-    sound.init();
-    usedLetters.push(letter);
-    if (answerWord.includes(letter)) {
-        if (!guessedLetters.includes(letter)) {
-            guessedLetters.push(letter);
-            sound.correct();
-            const allGuessed = answerWord.split('').every(ch => guessedLetters.includes(ch));
-            if (allGuessed) {
-                message.textContent = '✅ Правильно! Уровень пройден!';
-                sound.levelComplete();
-                nextBtn.disabled = false;
-                document.querySelectorAll('.letter-btn').forEach(b => {
-                    if (answerWord.includes(b.dataset.letter)) b.classList.add('correct');
-                });
-                coins += LEVEL_BONUS;
-                updateCoins();
-                levelHistory.push({ levelIndex: currentLevel, passed: true });
-                updateHistory();
-            } else {
-                message.textContent = '👍 Есть такая буква!';
-            }
-        }
-    } else {
-        sound.wrong();
-        message.textContent = '❌ Нет такой буквы!';
-    }
-    updateUI();
-    updateHintButtons();
-    updateCoins();
-}
-
-function updateCoins() { coinDisplay.textContent = coins; }
-
-function updateHintButtons() {
-    const isLevelComplete = !nextBtn.disabled;
-    hintRevealLetter.disabled = (coins < COST_REVEAL_LETTER || hintUsed.revealLetter || isLevelComplete);
-    hintRemoveExtra.disabled = (coins < COST_REMOVE_EXTRA || hintUsed.removeExtra || isLevelComplete);
-    hintShowAnswer.disabled = (coins < COST_SHOW_ANSWER || hintUsed.showAnswer || isLevelComplete);
-}
-
-hintRevealLetter.addEventListener('click', () => {
-    if (coins < COST_REVEAL_LETTER || hintUsed.revealLetter || !nextBtn.disabled) return;
-    const unrevealed = answerWord.split('').filter(ch => !guessedLetters.includes(ch));
-    if (unrevealed.length === 0) { message.textContent = 'Все буквы уже открыты!'; return; }
-    const randomChar = unrevealed[Math.floor(Math.random() * unrevealed.length)];
-    if (!guessedLetters.includes(randomChar)) {
-        guessedLetters.push(randomChar);
-        if (!usedLetters.includes(randomChar)) usedLetters.push(randomChar);
-        sound.hint();
-        coins -= COST_REVEAL_LETTER;
-        hintUsed.revealLetter = true;
-        updateCoins();
-        updateUI();
-        updateHintButtons();
-        message.textContent = '🔍 Буква "' + randomChar + '" открыта!';
-        const allGuessed = answerWord.split('').every(ch => guessedLetters.includes(ch));
-        if (allGuessed) {
-            message.textContent = '✅ Правильно! Уровень пройден!';
-            sound.levelComplete();
-            nextBtn.disabled = false;
-            document.querySelectorAll('.letter-btn').forEach(b => {
-                if (answerWord.includes(b.dataset.letter)) b.classList.add('correct');
-            });
-            coins += LEVEL_BONUS;
-            updateCoins();
-            levelHistory.push({ levelIndex: currentLevel, passed: true });
-            updateHistory();
-        }
-    }
-});
-
-hintRemoveExtra.addEventListener('click', () => {
-    if (coins < COST_REMOVE_EXTRA || hintUsed.removeExtra || !nextBtn.disabled) return;
-    const toRemove = allLetters.filter(ch => !answerWord.includes(ch) && !usedLetters.includes(ch));
-    if (toRemove.length === 0) { message.textContent = 'Лишних букв нет!'; return; }
-    for (let ch of toRemove) usedLetters.push(ch);
-    sound.hint();
-    coins -= COST_REMOVE_EXTRA;
-    hintUsed.removeExtra = true;
-    updateCoins();
-    updateUI();
-    updateHintButtons();
-    message.textContent = '🧹 Лишние буквы убраны!';
-});
-
-hintShowAnswer.addEventListener('click', () => {
-    if (coins < COST_SHOW_ANSWER || hintUsed.showAnswer || !nextBtn.disabled) return;
-    for (let ch of answerWord) if (!guessedLetters.includes(ch)) guessedLetters.push(ch);
-    for (let ch of allLetters) if (!usedLetters.includes(ch)) usedLetters.push(ch);
-    sound.hint();
-    coins -= COST_SHOW_ANSWER;
-    hintUsed.showAnswer = true;
-    updateCoins();
-    updateUI();
-    updateHintButtons();
-    message.textContent = '👁 Ответ открыт!';
-    nextBtn.disabled = false;
-    document.querySelectorAll('.letter-btn').forEach(b => {
-        if (answerWord.includes(b.dataset.letter)) b.classList.add('correct');
-    });
-    coins += LEVEL_BONUS;
-    updateCoins();
-    levelHistory.push({ levelIndex: currentLevel, passed: true });
-    updateHistory();
-});
-
-nextBtn.addEventListener('click', () => {
-    currentLevel++;
-    loadLevel(currentLevel);
-});
-
-loadMoreBtn.addEventListener('click', loadMoreLevels);
-
-function showGameOver() {
-    gameArea.style.display = 'none';
-    gameOverArea.style.display = 'block';
-    gameCompleted = true;
-    sound.gameOver();
-}
-
-restartBtn.addEventListener('click', initGame);
-
-function updateProgress() {
-    progressText.textContent = 'Уровень ' + (currentLevel+1) + ' из ' + allLevels.length;
-}
-
-function updateHistory() {
-    historyPanel.innerHTML = '';
-    if (levelHistory.length === 0) {
-        historyPanel.innerHTML = '<div style="color:#555;padding:8px;">Нет пройденных уровней</div>';
-        return;
-    }
-    for (let i=0; i<levelHistory.length; i++) {
-        const entry = levelHistory[i];
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        const text = document.createElement('span');
-        text.textContent = 'Уровень ' + (entry.levelIndex+1);
-        div.appendChild(text);
-        const status = document.createElement('span');
-        status.className = 'status' + (entry.passed ? '' : ' fail');
-        status.textContent = entry.passed ? '✅ Пройден' : '❌ Не пройден';
-        div.appendChild(status);
-        historyPanel.appendChild(div);
-    }
-}
-
-historyToggle.addEventListener('click', () => {
-    historyPanel.classList.toggle('open');
-    if (historyPanel.classList.contains('open')) updateHistory();
-});
-
-// ============================================================
-// 4. СТАРТ
-// ============================================================
-initGame();
-
-</script>
-</body>
-</html>`;
+    return htmlLines.join('\n');
 }
 
 // ============================================================
