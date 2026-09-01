@@ -103,6 +103,7 @@
     <div class="tabs">
         <button class="active" data-tab="constructor">Конструктор</button>
         <button data-tab="design">Дизайн</button>
+        <button data-tab="ads">Реклама (РСЯ)</button>
         <button data-tab="preview">Предпросмотр</button>
     </div>
 
@@ -197,6 +198,35 @@
         </div>
     </div>
 
+    <!-- Вкладка рекламы (РСЯ) -->
+    <div id="tab-ads" class="tab-content">
+        <div class="design-panel">
+            <h3>Реклама РСЯ (Рекламная сеть Яндекса)</h3>
+            <div class="checkbox-group">
+                <input type="checkbox" id="adsEnabled">
+                <label for="adsEnabled">Включить рекламу в экспортируемой игре</label>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Block ID баннера (нижняя плашка)</label>
+                    <input type="text" id="adsBannerBlockId" placeholder="R-A-XXXXXXX-1">
+                </div>
+                <div class="form-group">
+                    <label>Block ID полноэкранной рекламы</label>
+                    <input type="text" id="adsInterstitialBlockId" placeholder="R-A-XXXXXXX-2 (необязательно)">
+                </div>
+                <div class="form-group">
+                    <label>Показывать полноэкранную рекламу каждые N уровней</label>
+                    <input type="number" id="adsInterstitialEvery" value="3" min="1">
+                </div>
+            </div>
+            <p style="color:#aaa; font-size:14px; line-height:1.5;">
+                ⚠️ Block ID берутся из личного кабинета Яндекс.Директ (раздел «Монетизация сайта» / РСЯ) после того, как вы зарегистрируете там свою площадку.
+                Реклама РСЯ работает только когда игра открыта по адресу настоящего сайта (http/https), а не как локальный файл — перед экспортом загрузите готовый HTML на хостинг и укажите его в кабинете Яндекса. Полноэкранный блок — необязателен, оставьте поле пустым, если он не нужен.
+            </p>
+        </div>
+    </div>
+
     <!-- Вкладка предпросмотра -->
     <div id="tab-preview" class="tab-content">
         <div class="preview-container">
@@ -243,6 +273,10 @@ function loadProjectFromStorage() {
             document.getElementById('baseLevelsCount').value = data.baseLevelsCount || 100;
             document.getElementById('batchSize').value = data.batchSize || 50;
             document.getElementById('autoLoadMore').checked = data.autoLoadMore !== undefined ? data.autoLoadMore : true;
+            document.getElementById('adsEnabled').checked = data.adsEnabled !== undefined ? data.adsEnabled : false;
+            document.getElementById('adsBannerBlockId').value = data.adsBannerBlockId || '';
+            document.getElementById('adsInterstitialBlockId').value = data.adsInterstitialBlockId || '';
+            document.getElementById('adsInterstitialEvery').value = data.adsInterstitialEvery || 3;
             if (data.design) {
                 for (let key in defaultColors) {
                     if (data.design[key]) document.getElementById(key).value = data.design[key];
@@ -277,6 +311,10 @@ function saveProjectToStorage() {
         baseLevelsCount: parseInt(document.getElementById('baseLevelsCount').value) || 100,
         batchSize: parseInt(document.getElementById('batchSize').value) || 50,
         autoLoadMore: document.getElementById('autoLoadMore').checked,
+        adsEnabled: document.getElementById('adsEnabled').checked,
+        adsBannerBlockId: document.getElementById('adsBannerBlockId').value.trim(),
+        adsInterstitialBlockId: document.getElementById('adsInterstitialBlockId').value.trim(),
+        adsInterstitialEvery: parseInt(document.getElementById('adsInterstitialEvery').value) || 3,
         design: {
             bgColor: document.getElementById('bgColor').value,
             cardColor: document.getElementById('cardColor').value,
@@ -365,7 +403,8 @@ function renderLevelList() {
         delBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             deleteLevel(idx);
-        });
+
+           });
         actions.appendChild(delBtn);
         div.appendChild(actions);
 
@@ -397,7 +436,10 @@ function clearEditForm() {
     document.getElementById('editAnswer').value = '';
     document.getElementById('editImageUrl').value = '';
     document.getElementById('editImageFile').value = '';
-    document.getElementById('editImagePreview').style.display = 'none';
+    const preview = document.getElementById('editImagePreview');
+    preview.src = '';
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
     document.getElementById('editIndex').value = '-1';
     editingIndex = -1;
 }
@@ -475,6 +517,10 @@ function generateGameHTML() {
     const baseLevelsCount = parseInt(document.getElementById('baseLevelsCount').value) || 100;
     const batchSize = parseInt(document.getElementById('batchSize').value) || 50;
     const autoLoadMore = document.getElementById('autoLoadMore').checked;
+    const adsEnabled = document.getElementById('adsEnabled').checked;
+    const adsBannerBlockId = document.getElementById('adsBannerBlockId').value.trim();
+    const adsInterstitialBlockId = document.getElementById('adsInterstitialBlockId').value.trim();
+    const adsInterstitialEvery = parseInt(document.getElementById('adsInterstitialEvery').value) || 3;
 
     const useCustom = document.getElementById('useCustomColors').checked;
     const bgColor = useCustom ? document.getElementById('bgColor').value : defaultColors.bgColor;
@@ -504,24 +550,25 @@ function generateGameHTML() {
     htmlLines.push('<html lang="ru">');
     htmlLines.push('<head>');
     htmlLines.push('<meta charset="UTF-8">');
-    htmlLines.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">');
+    htmlLines.push('<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">');
     htmlLines.push('<title>Викторина</title>');
     htmlLines.push('<style>');
-    htmlLines.push('* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }');
-    htmlLines.push('body { font-family: \'Segoe UI\', sans-serif; background: ' + bgColor + '; color: ' + textColor + '; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }');
-    htmlLines.push('.game-container { max-width: 450px; width: 100%; background: ' + cardColor + '; border-radius: 20px; padding: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.6); }');
-    htmlLines.push('.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 18px; color: ' + textColor + '; }');
-    htmlLines.push('.header .coins { background: ' + btnColor + '; color: ' + btnTextColor + '; padding: 4px 14px; border-radius: 30px; font-weight: bold; }');
+    htmlLines.push('* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }');
+    htmlLines.push('html, body { height: 100%; }');
+    htmlLines.push('body { font-family: \'Segoe UI\', sans-serif; background: ' + bgColor + '; color: ' + textColor + '; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; padding: 16px; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); overflow-x: hidden; }');
+    htmlLines.push('.game-container { max-width: min(460px, 94vw); width: 100%; max-height: 96vh; overflow-y: auto; background: ' + cardColor + '; border-radius: 20px; padding: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.6); }');
+    htmlLines.push('.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: clamp(14px, 4vw, 18px); color: ' + textColor + '; }');
+    htmlLines.push('.header .coins { background: ' + btnColor + '; color: ' + btnTextColor + '; padding: 4px 14px; border-radius: 30px; font-weight: bold; white-space: nowrap; }');
     htmlLines.push('.question-block { text-align: center; margin-bottom: 20px; }');
-    htmlLines.push('.question-block img { max-width: 100%; max-height: 250px; border-radius: 12px; background: #000; object-fit: contain; }');
-    htmlLines.push('.question-block h2 { margin-top: 12px; font-size: 22px; color: ' + textColor + '; }');
-    htmlLines.push('.letter-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px 0; }');
-    htmlLines.push('.letter-btn { width: 44px; height: 44px; background: ' + letterBtnColor + '; border: none; border-radius: 10px; color: ' + letterTextColor + '; font-size: 24px; font-weight: bold; cursor: pointer; transition: 0.1s; box-shadow: 0 4px 0 #0a0a1a; }');
+    htmlLines.push('.question-block img { max-width: 100%; max-height: min(250px, 32vh); border-radius: 12px; background: #000; object-fit: contain; }');
+    htmlLines.push('.question-block h2 { margin-top: 12px; font-size: clamp(18px, 5vw, 24px); color: ' + textColor + '; }');
+    htmlLines.push('.letter-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 20px 0; }');
+    htmlLines.push('.letter-btn { width: clamp(38px, 10vw, 48px); height: clamp(38px, 10vw, 48px); background: ' + letterBtnColor + '; border: none; border-radius: 10px; color: ' + letterTextColor + '; font-size: clamp(18px, 5vw, 24px); font-weight: bold; cursor: pointer; transition: 0.1s; box-shadow: 0 4px 0 #0a0a1a; }');
     htmlLines.push('.letter-btn:active { transform: translateY(4px); box-shadow: none; }');
     htmlLines.push('.letter-btn.used { opacity: 0.3; pointer-events: none; }');
     htmlLines.push('.letter-btn.correct { background: #27ae60; }');
     htmlLines.push('.answer-display { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 15px 0; min-height: 50px; }');
-    htmlLines.push('.answer-slot { width: 36px; height: 44px; border-bottom: 3px solid ' + btnColor + '; display: inline-flex; justify-content: center; align-items: center; font-size: 28px; font-weight: bold; color: ' + textColor + '; }');
+    htmlLines.push('.answer-slot { width: clamp(26px, 8vw, 36px); height: clamp(34px, 10vw, 44px); border-bottom: 3px solid ' + btnColor + '; display: inline-flex; justify-content: center; align-items: center; font-size: clamp(20px, 6vw, 28px); font-weight: bold; color: ' + textColor + '; }');
     htmlLines.push('.controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 15px 0; }');
     htmlLines.push('.controls button { background: ' + letterBtnColor + '; border: none; border-radius: 30px; padding: 8px 18px; color: ' + letterTextColor + '; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.1s; box-shadow: 0 3px 0 #0a0a1a; }');
     htmlLines.push('.controls button:active { transform: translateY(3px); box-shadow: none; }');
@@ -546,7 +593,32 @@ function generateGameHTML() {
     htmlLines.push('.load-more-btn { background: ' + btnColor + '; color: ' + btnTextColor + '; border: none; border-radius: 30px; padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; box-shadow: 0 4px 0 #b8960f; transition: 0.1s; }');
     htmlLines.push('.load-more-btn:active { transform: translateY(4px); box-shadow: none; }');
     htmlLines.push('.load-more-btn:disabled { opacity: 0.4; pointer-events: none; }');
+    htmlLines.push('.ad-banner-slot { width: 100%; max-width: min(460px, 94vw); margin: 12px auto 0; min-height: 50px; }');
+    htmlLines.push('button:focus-visible, .letter-btn:focus-visible { outline: 3px solid ' + btnColor + '; outline-offset: 2px; }');
+    htmlLines.push('@media (min-width: 900px) {');
+    htmlLines.push('.game-container { max-width: 620px; padding: 32px; }');
+    htmlLines.push('.question-block h2 { font-size: 30px; }');
+    htmlLines.push('.letter-btn { width: 56px; height: 56px; font-size: 28px; }');
+    htmlLines.push('.answer-slot { width: 44px; height: 52px; font-size: 32px; }');
+    htmlLines.push('.btn-next, .load-more-btn { font-size: 20px; padding: 14px 30px; }');
+    htmlLines.push('.controls button { font-size: 16px; padding: 10px 22px; }');
+    htmlLines.push('}');
+    htmlLines.push('@media (max-height: 480px) and (orientation: landscape) {');
+    htmlLines.push('body { align-items: flex-start; }');
+    htmlLines.push('.game-container { max-height: none; }');
+    htmlLines.push('.question-block { margin-bottom: 10px; }');
+    htmlLines.push('.question-block img { max-height: 90px; }');
+    htmlLines.push('.letter-grid { margin: 10px 0; }');
+    htmlLines.push('.answer-display { margin: 8px 0; min-height: 40px; }');
+    htmlLines.push('}');
+    htmlLines.push('@media (max-width: 340px) {');
+    htmlLines.push('.game-container { padding: 14px; }');
+    htmlLines.push('.controls button { padding: 6px 12px; font-size: 12px; }');
+    htmlLines.push('}');
     htmlLines.push('</style>');
+    if (adsEnabled && (adsBannerBlockId || adsInterstitialBlockId)) {
+        htmlLines.push('<script src="https://yandex.ru/ads/system/context.js" async>' + '<' + '/script>');
+    }
     htmlLines.push('</head>');
     htmlLines.push('<body>');
     htmlLines.push('<div class="game-container" id="app">');
@@ -580,6 +652,9 @@ function generateGameHTML() {
     htmlLines.push('</div>');
     htmlLines.push('<div class="footer-progress" id="progressText"></div>');
     htmlLines.push('</div>');
+    if (adsEnabled && adsBannerBlockId) {
+        htmlLines.push('<div id="yandex_rtb_banner" class="ad-banner-slot"></div>');
+            }
 
     // Встроенный JavaScript
     htmlLines.push('<script>');
@@ -592,6 +667,10 @@ function generateGameHTML() {
     htmlLines.push('const COST_SHOW_ANSWER = ' + costShowAnswer + ';');
     htmlLines.push('const START_COINS = ' + startCoins + ';');
     htmlLines.push('const LEVEL_BONUS = ' + levelBonus + ';');
+    htmlLines.push('const ADS_ENABLED = ' + (adsEnabled && (!!adsBannerBlockId || !!adsInterstitialBlockId)) + ';');
+    htmlLines.push('const ADS_BANNER_BLOCK_ID = ' + JSON.stringify(adsBannerBlockId) + ';');
+    htmlLines.push('const ADS_INTERSTITIAL_BLOCK_ID = ' + JSON.stringify(adsInterstitialBlockId) + ';');
+    htmlLines.push('const ADS_INTERSTITIAL_EVERY = ' + adsInterstitialEvery + ';');
 
     // Код SoundFX
     htmlLines.push('class SoundFX {');
@@ -872,7 +951,33 @@ function generateGameHTML() {
     htmlLines.push('updateHistory();');
     htmlLines.push('});');
     htmlLines.push('');
-    htmlLines.push('nextBtn.addEventListener(\'click\', () => { currentLevel++; loadLevel(currentLevel); });');
+    htmlLines.push('let levelsPassedForAds = 0;');
+    htmlLines.push('function initAds() {');
+    htmlLines.push('if (!ADS_ENABLED) return;');
+    htmlLines.push('window.yaContextCb = window.yaContextCb || [];');
+    htmlLines.push('if (ADS_BANNER_BLOCK_ID) {');
+    htmlLines.push('window.yaContextCb.push(() => { try { window.Ya.Context.AdvManager.render({ blockId: ADS_BANNER_BLOCK_ID, renderTo: \'yandex_rtb_banner\' }); } catch (e) {} });');
+    htmlLines.push('}');
+    htmlLines.push('}');
+    htmlLines.push('function maybeShowInterstitial(callback) {');
+    htmlLines.push('if (!ADS_ENABLED || !ADS_INTERSTITIAL_BLOCK_ID) { callback(); return; }');
+    htmlLines.push('levelsPassedForAds++;');
+    htmlLines.push('if (levelsPassedForAds % ADS_INTERSTITIAL_EVERY !== 0) { callback(); return; }');
+    htmlLines.push('let done = false;');
+    htmlLines.push('const proceed = () => { if (done) return; done = true; callback(); };');
+    htmlLines.push('try {');
+    htmlLines.push('window.yaContextCb = window.yaContextCb || [];');
+    htmlLines.push('window.yaContextCb.push(() => {');
+    htmlLines.push('try {');
+    
+htmlLines.push('window.Ya.Context.AdvManager.render({ blockId: ADS_INTERSTITIAL_BLOCK_ID, type: \'fullscreen\', platform: \'touch\', onClose: proceed, onError: proceed });');
+    htmlLines.push('} catch (e) { proceed(); }');
+    htmlLines.push('});');
+    htmlLines.push('} catch (e) { proceed(); }');
+    htmlLines.push('setTimeout(proceed, 4000);');
+    htmlLines.push('}');
+    htmlLines.push('');
+    htmlLines.push('nextBtn.addEventListener(\'click\', () => { nextBtn.disabled = true; maybeShowInterstitial(() => { currentLevel++; loadLevel(currentLevel); }); });');
     htmlLines.push('loadMoreBtn.addEventListener(\'click\', loadMoreLevels);');
     htmlLines.push('');
     htmlLines.push('function showGameOver() {');
@@ -914,8 +1019,9 @@ function generateGameHTML() {
     htmlLines.push('if (historyPanel.classList.contains(\'open\')) updateHistory();');
     htmlLines.push('});');
     htmlLines.push('');
+    htmlLines.push('initAds();');
     htmlLines.push('initGame();');
-    htmlLines.push('</script>');
+    htmlLines.push('<' + '/script>');
     htmlLines.push('</body>');
     htmlLines.push('</html>');
 
@@ -956,7 +1062,7 @@ document.getElementById('closePreviewBtn').addEventListener('click', () => {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-constructor').classList.add('active');
 });
-
+    
 // ============================================================
 // 6. Сохранение/загрузка проекта
 // ============================================================
@@ -973,6 +1079,10 @@ document.getElementById('saveProjectBtn').addEventListener('click', () => {
         baseLevelsCount: parseInt(document.getElementById('baseLevelsCount').value) || 100,
         batchSize: parseInt(document.getElementById('batchSize').value) || 50,
         autoLoadMore: document.getElementById('autoLoadMore').checked,
+        adsEnabled: document.getElementById('adsEnabled').checked,
+        adsBannerBlockId: document.getElementById('adsBannerBlockId').value.trim(),
+        adsInterstitialBlockId: document.getElementById('adsInterstitialBlockId').value.trim(),
+        adsInterstitialEvery: parseInt(document.getElementById('adsInterstitialEvery').value) || 3,
         design: {
             bgColor: document.getElementById('bgColor').value,
             cardColor: document.getElementById('cardColor').value,
@@ -1018,6 +1128,10 @@ document.getElementById('loadProjectInput').addEventListener('change', function(
             document.getElementById('baseLevelsCount').value = data.baseLevelsCount || 100;
             document.getElementById('batchSize').value = data.batchSize || 50;
             document.getElementById('autoLoadMore').checked = data.autoLoadMore !== undefined ? data.autoLoadMore : true;
+            document.getElementById('adsEnabled').checked = data.adsEnabled !== undefined ? data.adsEnabled : false;
+            document.getElementById('adsBannerBlockId').value = data.adsBannerBlockId || '';
+            document.getElementById('adsInterstitialBlockId').value = data.adsInterstitialBlockId || '';
+            document.getElementById('adsInterstitialEvery').value = data.adsInterstitialEvery || 3;
             if (data.design) {
                 for (let key in defaultColors) {
                     if (data.design[key]) document.getElementById(key).value = data.design[key];
@@ -1035,7 +1149,7 @@ document.getElementById('loadProjectInput').addEventListener('change', function(
     this.value = '';
 });
 
-// ============================================================
+    // ============================================================
 // 7. Переключение вкладок
 // ============================================================
 document.querySelectorAll('.tabs button').forEach(btn => {
@@ -1056,3 +1170,10 @@ renderLevelList();
 </script>
 </body>
 </html>
+
+
+
+
+
+
+                   
