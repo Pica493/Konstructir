@@ -166,7 +166,7 @@
         <div style="background:#1a1a2e; padding:15px; border-radius:8px; margin:15px 0;">
             <h3>Редактирование уровня</h3>
             <div class="form-group"><label>Вопрос</label><input type="text" id="editQuestion" placeholder="Например: Угадай мультфильм?"></div>
-            <div class="form-group"><label>Правильный ответ (одно слово, максимум 18 букв)</label><input type="text" id="editAnswer" placeholder="Например: Шрек" maxlength="18"><span id="answerCharCount" style="font-size:12px; color:#999;">0/18</span></div>
+            <div class="form-group"><label>Правильный ответ (одно, два или три слова — максимум 18 символов)</label><input type="text" id="editAnswer" placeholder="Например: Шрек или Кот в сапогах" maxlength="18"><span id="answerCharCount" style="font-size:12px; color:#999;">0/18</span></div>
             <div class="form-group">
                 <label>Изображение (URL или загрузите файл)</label>
                 <input type="file" id="editImageFile" accept="image/*">
@@ -348,13 +348,9 @@ function saveLevel(question, answer, imageData, index) {
         alert('Введите вопрос и ответ!');
         return false;
     }
-    const cleanAnswer = answer.trim().toUpperCase();
+    const cleanAnswer = answer.trim().replace(/\s+/g, ' ').toUpperCase();
     if (cleanAnswer.length > 18) {
-        alert('Ответ не должен превышать 18 букв! Сейчас: ' + cleanAnswer.length);
-        return false;
-    }
-    if (/\s/.test(cleanAnswer)) {
-        alert('Ответ должен быть одним словом, без пробелов!');
+        alert('Ответ не должен превышать 18 символов! Сейчас: ' + cleanAnswer.length);
         return false;
     }
     const level = { question: question.trim(), answer: cleanAnswer, image: imageData };
@@ -667,7 +663,8 @@ function generateGameHTML() {
     htmlLines.push('.icon-btn:active { background: rgba(255,255,255,0.1); }');
     htmlLines.push('.level-pill { background: #2ecc71; color: #fff; border: none; padding: 8px 16px; border-radius: 30px; font-weight: bold; font-size: clamp(13px, 3.6vw, 15px); cursor: pointer; white-space: nowrap; box-shadow: 0 3px 0 #1e8449; }');
     htmlLines.push('.level-pill:active { transform: translateY(2px); box-shadow: none; }');
-    htmlLines.push('.coins-pill { margin-left: auto; background: #1abc9c; color: #fff; padding: 6px 14px 6px 10px; border-radius: 30px; font-weight: bold; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-size: clamp(14px, 4vw, 16px); }');
+    htmlLines.push('.header-spacer { flex: 1 1 auto; }');
+    htmlLines.push('.coins-pill { background: #1abc9c; color: #fff; padding: 6px 14px 6px 10px; border-radius: 30px; font-weight: bold; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-size: clamp(14px, 4vw, 16px); }');
     htmlLines.push('.coin-icon { display: inline-flex; }');
     htmlLines.push('.coin-icon svg { display: block; }');
     htmlLines.push('.question-block { text-align: center; margin-bottom: 10px; }');
@@ -684,6 +681,8 @@ function generateGameHTML() {
     htmlLines.push('.answer-slot.filled { background: rgba(255,255,255,0.1); }');
     htmlLines.push('.answer-slot.correct { border-color: #2ecc71; color: #2ecc71; }');
     htmlLines.push('.answer-slot.wrong { border-color: #e94560; color: #e94560; animation: shakeSlot 0.3s; }');
+    htmlLines.push('.answer-slot.hinted { border-color: #f1c40f; color: #f1c40f; cursor: default; }');
+    htmlLines.push('.answer-space { display: inline-block; width: clamp(12px, 3.5vw, 18px); }');
     htmlLines.push('@keyframes shakeSlot { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }');
     htmlLines.push('.action-row { display: flex; gap: 10px; margin: 10px 0; }');
     htmlLines.push('.action-btn { flex: 1; background: #1abc9c; border: none; border-radius: 30px; padding: 12px 10px; color: #fff; font-size: clamp(13px, 3.6vw, 15px); font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 #12836d; transition: 0.1s; }');
@@ -764,6 +763,7 @@ function generateGameHTML() {
     htmlLines.push('<div class="game-container" id="app">');
     htmlLines.push('<div class="header">');
     htmlLines.push('<button class="icon-btn" id="menuBtn" aria-label="Настройки">&#9776;</button>');
+    htmlLines.push('<span class="header-spacer"></span>');
     htmlLines.push('<button class="level-pill" id="levelPillBtn">Уровень: <span id="levelNum">1</span></button>');
     htmlLines.push('<span class="coins-pill"><span class="coin-icon" aria-hidden="true">' + COIN_ICON_SVG + '</span><span id="coinDisplay">' + startCoins + '</span></span>');
     htmlLines.push('<span id="totalLevels" style="display:none;">' + totalBase + '</span>');
@@ -774,12 +774,12 @@ function generateGameHTML() {
     htmlLines.push('<div class="image-frame"><img id="levelImage" src="" alt="Картинка"></div>');
     htmlLines.push('</div>');
     htmlLines.push('<div class="answer-display" id="answerDisplay"></div>');
-    htmlLines.push('<div class="letter-grid" id="letterGrid"></div>');
     htmlLines.push('<div class="action-row">');
     htmlLines.push('<button class="action-btn" id="friendHelpBtn">🤝 Помощь друга</button>');
     htmlLines.push('<button class="action-btn action-btn-accent" id="hintsBtn">💡 Подсказки</button>');
     htmlLines.push('</div>');
     htmlLines.push('<div class="message" id="message"></div>');
+    htmlLines.push('<div class="letter-grid" id="letterGrid"></div>');
     htmlLines.push('<button class="btn-next" id="nextBtn" disabled>Далее →</button>');
     htmlLines.push('<button class="load-more-btn" id="loadMoreBtn" style="display:none;">📥 Загрузить новые уровни</button>');
     htmlLines.push('<button class="history-toggle" id="historyToggle">📊 История уровней</button>');
@@ -861,7 +861,7 @@ function generateGameHTML() {
     htmlLines.push('let letterTiles = [];');
     htmlLines.push('let gameCompleted = false;');
     htmlLines.push('let autoAdvanceTimer = null;');
-    htmlLines.push('let hintUsed = { revealLetter: false, removeExtra: false, showAnswer: false };');
+    htmlLines.push('let hintUsed = { removeExtra: false, showAnswer: false };');
     htmlLines.push('let levelHistory = [];');
     htmlLines.push('let isLoading = false;');
     htmlLines.push('let currentPage = 0;');
@@ -1077,8 +1077,8 @@ function generateGameHTML() {
     htmlLines.push('const level = allLevels[index];');
     htmlLines.push('clearTimeout(autoAdvanceTimer);');
     htmlLines.push('answerWord = level.answer.toUpperCase();');
-    htmlLines.push('answerSlots = answerWord.split(\'\').map(() => ({ letter: null, tileIndex: null }));');
-    htmlLines.push('hintUsed = { revealLetter: false, removeExtra: false, showAnswer: false };');
+    htmlLines.push('answerSlots = answerWord.split(\'\').map(ch => ch === \' \' ? { letter: \' \', tileIndex: null, isSpace: true, viaHint: false } : { letter: null, tileIndex: null, isSpace: false, viaHint: false });');
+    htmlLines.push('hintUsed = { removeExtra: false, showAnswer: false };');
     htmlLines.push('message.textContent = \'\';');
     htmlLines.push('nextBtn.disabled = true;');
     htmlLines.push('nextBtn.textContent = \'Далее →\';');
@@ -1100,7 +1100,7 @@ function generateGameHTML() {
     htmlLines.push('');
     htmlLines.push('function generateLetters() {');
     htmlLines.push('const TOTAL_LETTERS = 18;');
-    htmlLines.push('const requiredLetters = answerWord.split(\'\');');
+    htmlLines.push('const requiredLetters = answerWord.split(\'\').filter(ch => ch !== \' \');');
     htmlLines.push('const alphabet = \'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ\';');
     htmlLines.push('const extra = [];');
     htmlLines.push('for (let ch of alphabet) if (!answerWord.includes(ch) && !extra.includes(ch)) extra.push(ch);');
@@ -1117,9 +1117,15 @@ function generateGameHTML() {
     htmlLines.push('function updateUI() {');
     htmlLines.push('answerDisplay.innerHTML = \'\';');
     htmlLines.push('answerSlots.forEach((slot, i) => {');
+    htmlLines.push('if (slot.isSpace) {');
+    htmlLines.push('const gap = document.createElement(\'span\');');
+    htmlLines.push('gap.className = \'answer-space\';');
+    htmlLines.push('answerDisplay.appendChild(gap);');
+    htmlLines.push('return;');
+    htmlLines.push('}');
     htmlLines.push('const el = document.createElement(\'button\');');
     htmlLines.push('el.type = \'button\';');
-    htmlLines.push('el.className = \'answer-slot\' + (slot.letter ? \' filled\' : \'\');');
+    htmlLines.push('el.className = \'answer-slot\' + (slot.letter ? \' filled\' : \'\') + (slot.viaHint ? \' hinted\' : \'\');');
     htmlLines.push('el.textContent = slot.letter || \'\';');
     htmlLines.push('el.addEventListener(\'click\', () => onSlotClick(i));');
     htmlLines.push('answerDisplay.appendChild(el);');
@@ -1140,12 +1146,11 @@ function generateGameHTML() {
     htmlLines.push('if (gameCompleted || !nextBtn.disabled) return;');
     htmlLines.push('const tile = letterTiles[tileIndex];');
     htmlLines.push('if (!tile || tile.used) return;');
-    htmlLines.push('const emptySlotIndex = answerSlots.findIndex(s => s.letter === null);');
+    htmlLines.push('const emptySlotIndex = answerSlots.findIndex(s => !s.isSpace && s.letter === null);');
     htmlLines.push('if (emptySlotIndex === -1) return;');
     htmlLines.push('sound.init();');
     htmlLines.push('tile.used = true;');
-    htmlLines.push('answerSlots[emptySlotIndex] = { letter: tile.letter, tileIndex: tileIndex };');
-    htmlLines.push('message.textContent = \'\';');
+    htmlLines.push('answerSlots[emptySlotIndex] = { letter: tile.letter, tileIndex: tileIndex, isSpace: false, viaHint: false };');
     htmlLines.push('updateUI();');
     htmlLines.push('checkAnswerIfFull();');
     htmlLines.push('}');
@@ -1153,40 +1158,42 @@ function generateGameHTML() {
     htmlLines.push('function onSlotClick(slotIndex) {');
     htmlLines.push('if (gameCompleted || !nextBtn.disabled) return;');
     htmlLines.push('const slot = answerSlots[slotIndex];');
-    htmlLines.push('if (!slot || slot.letter === null) return;');
+    htmlLines.push('if (!slot || slot.isSpace || slot.letter === null || slot.viaHint) return;');
     htmlLines.push('const tile = letterTiles[slot.tileIndex];');
     htmlLines.push('if (tile) tile.used = false;');
-    htmlLines.push('answerSlots[slotIndex] = { letter: null, tileIndex: null };');
+    htmlLines.push('answerSlots[slotIndex] = { letter: null, tileIndex: null, isSpace: false, viaHint: false };');
     htmlLines.push('sound.init();');
     htmlLines.push('updateUI();');
     htmlLines.push('}');
     htmlLines.push('');
     htmlLines.push('function checkAnswerIfFull() {');
-    htmlLines.push('if (answerSlots.some(s => s.letter === null)) return;');
+    htmlLines.push('if (answerSlots.some(s => !s.isSpace && s.letter === null)) return;');
     htmlLines.push('const assembled = answerSlots.map(s => s.letter).join(\'\');');
     htmlLines.push('if (assembled === answerWord) {');
     htmlLines.push('onLevelPassed();');
     htmlLines.push('} else {');
     htmlLines.push('sound.wrong();');
-    htmlLines.push('message.textContent = \'❌ Неправильно! Попробуйте ещё раз.\';');
     htmlLines.push('document.querySelectorAll(\'.answer-slot\').forEach(el => el.classList.add(\'wrong\'));');
     htmlLines.push('setTimeout(() => {');
-    htmlLines.push('answerSlots.forEach(s => { if (s.tileIndex !== null) letterTiles[s.tileIndex].used = false; });');
-    htmlLines.push('answerSlots = answerWord.split(\'\').map(() => ({ letter: null, tileIndex: null }));');
-    htmlLines.push('message.textContent = \'\';');
+    htmlLines.push('answerSlots.forEach((s, i) => {');
+    htmlLines.push('if (!s.isSpace && s.letter !== null && !s.viaHint) {');
+    htmlLines.push('if (s.tileIndex !== null) letterTiles[s.tileIndex].used = false;');
+    htmlLines.push('answerSlots[i] = { letter: null, tileIndex: null, isSpace: false, viaHint: false };');
+    htmlLines.push('}');
+    htmlLines.push('});');
     htmlLines.push('updateUI();');
     htmlLines.push('}, 900);');
     htmlLines.push('}');
     htmlLines.push('}');
     htmlLines.push('');
     htmlLines.push('function onLevelPassed() {');
+    htmlLines.push('const alreadyCompleted = completedLevels.includes(currentLevel);');
     htmlLines.push('message.textContent = \'✅ Правильно! Уровень пройден!\';');
     htmlLines.push('sound.levelComplete();');
     htmlLines.push('nextBtn.disabled = false;');
     htmlLines.push('markLevelCompleted(currentLevel);');
     htmlLines.push('document.querySelectorAll(\'.answer-slot\').forEach(el => el.classList.add(\'correct\'));');
-    htmlLines.push('coins += LEVEL_BONUS;');
-    htmlLines.push('updateCoins();');
+    htmlLines.push('if (!alreadyCompleted) { coins += LEVEL_BONUS; updateCoins(); }');
     htmlLines.push('updateHintButtons();');
     htmlLines.push('levelHistory.push({ levelIndex: currentLevel, passed: true });');
     htmlLines.push('updateHistory();');
@@ -1209,28 +1216,33 @@ function generateGameHTML() {
     htmlLines.push('');
     htmlLines.push('function updateHintButtons() {');
     htmlLines.push('const isLevelComplete = !nextBtn.disabled;');
-    htmlLines.push('hintRevealLetter.disabled = (coins < COST_REVEAL_LETTER || hintUsed.revealLetter || isLevelComplete);');
+    htmlLines.push('const nothingLeftToReveal = answerSlots.filter(s => !s.isSpace).every(s => s.viaHint && s.letter !== null);');
+    htmlLines.push('hintRevealLetter.disabled = (coins < COST_REVEAL_LETTER || isLevelComplete || nothingLeftToReveal);');
     htmlLines.push('hintRemoveExtra.disabled = (coins < COST_REMOVE_EXTRA || hintUsed.removeExtra || isLevelComplete);');
     htmlLines.push('hintShowAnswer.disabled = (coins < COST_SHOW_ANSWER || hintUsed.showAnswer || isLevelComplete);');
     htmlLines.push('}');
     htmlLines.push('');
     htmlLines.push('hintRevealLetter.addEventListener(\'click\', () => {');
-    htmlLines.push('if (coins < COST_REVEAL_LETTER || hintUsed.revealLetter || !nextBtn.disabled) return;');
-    htmlLines.push('const emptyIndices = answerSlots.map((s, i) => s.letter === null ? i : -1).filter(i => i !== -1);');
-    htmlLines.push('if (emptyIndices.length === 0) { message.textContent = \'Все буквы уже открыты!\'; return; }');
+    htmlLines.push('if (coins < COST_REVEAL_LETTER || !nextBtn.disabled) return;');
+    htmlLines.push('answerSlots.forEach((s, i) => {');
+    htmlLines.push('if (!s.isSpace && s.letter !== null && !s.viaHint) {');
+    htmlLines.push('if (s.tileIndex !== null) letterTiles[s.tileIndex].used = false;');
+    htmlLines.push('answerSlots[i] = { letter: null, tileIndex: null, isSpace: false, viaHint: false };');
+    htmlLines.push('}');
+    htmlLines.push('});');
+    htmlLines.push('const emptyIndices = answerSlots.map((s, i) => (!s.isSpace && s.letter === null) ? i : -1).filter(i => i !== -1);');
+    htmlLines.push('if (emptyIndices.length === 0) { updateUI(); closeModal(hintsModalOverlay); return; }');
     htmlLines.push('const slotIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];');
     htmlLines.push('const correctLetter = answerWord[slotIndex];');
     htmlLines.push('const tileIndex = letterTiles.findIndex(t => !t.used && t.letter === correctLetter);');
-    htmlLines.push('if (tileIndex === -1) { message.textContent = \'Не удалось открыть букву.\'; return; }');
+    htmlLines.push('if (tileIndex === -1) { updateUI(); closeModal(hintsModalOverlay); return; }');
     htmlLines.push('letterTiles[tileIndex].used = true;');
-    htmlLines.push('answerSlots[slotIndex] = { letter: correctLetter, tileIndex: tileIndex };');
+    htmlLines.push('answerSlots[slotIndex] = { letter: correctLetter, tileIndex: tileIndex, isSpace: false, viaHint: true };');
     htmlLines.push('sound.hint();');
     htmlLines.push('coins -= COST_REVEAL_LETTER;');
-    htmlLines.push('hintUsed.revealLetter = true;');
     htmlLines.push('updateCoins();');
     htmlLines.push('updateUI();');
     htmlLines.push('updateHintButtons();');
-    htmlLines.push('message.textContent = \'🔍 Буква "\' + correctLetter + \'" открыта!\';');
     htmlLines.push('closeModal(hintsModalOverlay);');
     htmlLines.push('checkAnswerIfFull();');
     htmlLines.push('});');
@@ -1238,7 +1250,7 @@ function generateGameHTML() {
     htmlLines.push('hintRemoveExtra.addEventListener(\'click\', () => {');
     htmlLines.push('if (coins < COST_REMOVE_EXTRA || hintUsed.removeExtra || !nextBtn.disabled) return;');
     htmlLines.push('const decoys = letterTiles.filter(t => t.isDecoy && !t.used);');
-    htmlLines.push('if (decoys.length === 0) { message.textContent = \'Лишних букв нет!\'; return; }');
+    htmlLines.push('if (decoys.length === 0) { closeModal(hintsModalOverlay); return; }');
     htmlLines.push('decoys.forEach(t => t.used = true);');
     htmlLines.push('sound.hint();');
     htmlLines.push('coins -= COST_REMOVE_EXTRA;');
@@ -1246,17 +1258,16 @@ function generateGameHTML() {
     htmlLines.push('updateCoins();');
     htmlLines.push('updateUI();');
     htmlLines.push('updateHintButtons();');
-    htmlLines.push('message.textContent = \'🧹 Лишние буквы убраны!\';');
     htmlLines.push('closeModal(hintsModalOverlay);');
     htmlLines.push('});');
     htmlLines.push('');
     htmlLines.push('hintShowAnswer.addEventListener(\'click\', () => {');
     htmlLines.push('if (coins < COST_SHOW_ANSWER || hintUsed.showAnswer || !nextBtn.disabled) return;');
     htmlLines.push('answerSlots.forEach((slot, i) => {');
-    htmlLines.push('if (slot.letter === null) {');
+    htmlLines.push('if (!slot.isSpace && slot.letter === null) {');
     htmlLines.push('const correctLetter = answerWord[i];');
     htmlLines.push('const tileIndex = letterTiles.findIndex(t => !t.used && t.letter === correctLetter);');
-    htmlLines.push('if (tileIndex !== -1) { letterTiles[tileIndex].used = true; answerSlots[i] = { letter: correctLetter, tileIndex: tileIndex }; }');
+    htmlLines.push('if (tileIndex !== -1) { letterTiles[tileIndex].used = true; answerSlots[i] = { letter: correctLetter, tileIndex: tileIndex, isSpace: false, viaHint: true }; }');
     htmlLines.push('}');
     htmlLines.push('});');
     htmlLines.push('sound.hint();');
@@ -1265,7 +1276,6 @@ function generateGameHTML() {
     htmlLines.push('updateCoins();');
     htmlLines.push('updateUI();');
     htmlLines.push('updateHintButtons();');
-    htmlLines.push('message.textContent = \'👁 Ответ открыт!\';');
     htmlLines.push('closeModal(hintsModalOverlay);');
     htmlLines.push('onLevelPassed();');
     htmlLines.push('});');
