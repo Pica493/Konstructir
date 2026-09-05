@@ -131,9 +131,28 @@
         .mygame-card-meta { font-size: 12px; color: #999; }
         .mygame-card-actions { display: flex; gap: 8px; flex: 0 0 auto; }
         .mygame-empty { color: #999; text-align: center; padding: 30px 0; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.open { display: flex; }
+        .modal-box { background: #1a1a2e; border-radius: 16px; padding: 26px; max-width: 420px; width: 100%; text-align: center; }
+        .lang-gate-options { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+        .lang-gate-btn {
+            background: #6c5ce7; color: #fff; border: none; padding: 16px 26px; border-radius: 12px;
+            font-size: 17px; font-weight: bold; cursor: pointer; flex: 1 1 140px;
+        }
+        .lang-gate-btn:hover { background: #5b4bd6; }
     </style>
 </head>
 <body>
+<div class="modal-overlay lang-gate-overlay" id="langGateOverlay">
+    <div class="modal-box lang-gate-box">
+        <h3>🌐 Выберите язык игры</h3>
+        <p style="color:#aaa; font-size:14px; margin: 10px 0 20px;">Выбор нельзя будет отменить без создания нового проекта: вопросы и ответы можно будет вводить только буквами выбранного языка (без смешивания русского и английского алфавитов).</p>
+        <div class="lang-gate-options">
+            <button class="lang-gate-btn" data-lang="ru">🇷🇺 Русский</button>
+            <button class="lang-gate-btn" data-lang="en">🇬🇧 English</button>
+        </div>
+    </div>
+</div>
 <div class="container">
     <h1>🧩 Конструктор викторин + подгрузка</h1>
     <div class="tabs">
@@ -249,6 +268,8 @@
                     <div class="color-field" data-target="textColor" data-label="Цвет текста (заголовки)" data-default="#ffffff"></div>
                     <div class="color-field" data-target="letterBtnColor" data-label="Цвет кнопок букв" data-default="#2a2a4a"></div>
                     <div class="color-field" data-target="letterTextColor" data-label="Цвет текста на буквах" data-default="#ffffff"></div>
+                    <div class="color-field" data-target="pillColor" data-label="Цвет плашек «Уровень» и «Монеты»" data-default="#2ecc71"></div>
+                    <div class="color-field" data-target="pillTextColor" data-label="Цвет текста на плашках" data-default="#ffffff"></div>
                     <div class="checkbox-group">
                         <input type="checkbox" id="useCustomColors" checked>
                         <label for="useCustomColors">Применить кастомные цвета в экспорте</label>
@@ -384,6 +405,7 @@ let gameIconDataUrl = null;
 let coinPackages = [];
 let splashImageDataUrl = null;
 let currentProjectId = null;
+let languageChosen = false;
 
 const defaultColors = {
     bgColor: '#0f0f1f',
@@ -392,7 +414,9 @@ const defaultColors = {
     btnTextColor: '#1a1a2e',
     textColor: '#ffffff',
     letterBtnColor: '#2a2a4a',
-    letterTextColor: '#ffffff'
+    letterTextColor: '#ffffff',
+    pillColor: '#2ecc71',
+    pillTextColor: '#ffffff'
 };
 
 function loadProjectFromStorage() {
@@ -413,6 +437,7 @@ function buildProjectData() {
         levels: levels,
         gameTitle: document.getElementById('gameTitle') ? document.getElementById('gameTitle').value.trim() : '',
         gameLang: document.getElementById('gameLang') ? document.getElementById('gameLang').value : 'ru',
+        languageChosen: languageChosen,
         splashImageDataUrl: typeof splashImageDataUrl !== 'undefined' ? splashImageDataUrl : null,
         creatorInfo: document.getElementById('creatorInfo') ? document.getElementById('creatorInfo').value.trim() : '',
         costRevealLetter: parseInt(document.getElementById('costRevealLetter').value) || 20,
@@ -432,16 +457,14 @@ function buildProjectData() {
         gameIconDataUrl: gameIconDataUrl,
         coinShopEnabled: document.getElementById('coinShopEnabled').checked,
         coinPackages: coinPackages,
-        design: {
-            bgColor: document.getElementById('bgColor').value,
-            cardColor: document.getElementById('cardColor').value,
-            btnColor: document.getElementById('btnColor').value,
-            btnTextColor: document.getElementById('btnTextColor').value,
-            textColor: document.getElementById('textColor').value,
-            letterBtnColor: document.getElementById('letterBtnColor').value,
-            letterTextColor: document.getElementById('letterTextColor').value,
-            useCustomColors: document.getElementById('useCustomColors').checked
-        }
+        design: (() => {
+            const d = { useCustomColors: document.getElementById('useCustomColors').checked };
+            for (let key in defaultColors) {
+                const el = document.getElementById(key);
+                if (el) d[key] = el.value;
+            }
+            return d;
+        })()
     };
 }
 
@@ -449,6 +472,7 @@ function applyProjectData(data) {
     levels = data.levels || [];
     if (document.getElementById('gameTitle')) document.getElementById('gameTitle').value = data.gameTitle || '';
     if (document.getElementById('gameLang')) document.getElementById('gameLang').value = data.gameLang || 'ru';
+    languageChosen = data.languageChosen || (data.levels && data.levels.length > 0) || false;
     if (typeof splashImageDataUrl !== 'undefined') {
         splashImageDataUrl = data.splashImageDataUrl || null;
         if (typeof setSplashImagePreviewOnly === 'function') setSplashImagePreviewOnly(splashImageDataUrl);
@@ -614,6 +638,15 @@ function saveLevel(question, answer, imageData, index) {
         alert('Ответ не должен превышать 18 символов! Сейчас: ' + cleanAnswer.length);
         return false;
     }
+    const lang = document.getElementById('gameLang') ? document.getElementById('gameLang').value : 'ru';
+    const foreignInAnswer = getForeignLetters(cleanAnswer, lang);
+    const foreignInQuestion = getForeignLetters(question, lang);
+    const foreignLetters = [...new Set([...foreignInAnswer, ...foreignInQuestion])];
+    if (foreignLetters.length > 0) {
+        const langName = lang === 'en' ? 'английском' : 'русском';
+        alert('Игра создаётся на ' + langName + ' языке. В вопросе или ответе есть буквы другого алфавита: ' + foreignLetters.join(', ') + '. Используйте буквы только выбранного языка (цифры и знаки препинания — можно).');
+        return false;
+    }
     const level = { question: question.trim(), answer: cleanAnswer, image: imageData };
     if (index === -1) levels.push(level);
     else levels[index] = level;
@@ -645,6 +678,7 @@ function clearAllLevels() {
 function renderLevelList() {
     const container = document.getElementById('levelList');
     const countSpan = document.getElementById('levelCount');
+    if (typeof updateLanguageLock === 'function') updateLanguageLock();
     container.innerHTML = '';
     if (levels.length === 0) {
         container.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#555;padding:20px;">Нет уровней. Добавьте первый!</div>';
@@ -1032,7 +1066,7 @@ function generateGameHTML(options) {
             restart: '🔄 Начать игру заново', restartConfirm: 'Начать игру заново? Прогресс монет и уровней будет сброшен.',
             soundOn: '🔊 Звук: Вкл.', soundOff: '🔇 Звук: Выкл.', close: 'Закрыть',
             revealLetterLabel: 'Показать букву', removeExtraLabel: 'Убрать лишние', showAnswerLabel: 'Пройти уровень',
-            imageAlt: 'Картинка', congrats: '🎉 Поздравляем!', allPassed: 'Вы прошли все уровни!', playAgain: '🔄 Сыграть снова',
+            imageAlt: 'Картинка', congrats: '🎉 Поздравляем!', allPassed: 'Вы прошли все доступные уровни! Ждите новых уровней от автора игры.', playAgain: '🔄 Сыграть снова',
             correctMsg: '✅ Правильно! Уровень пройден!', coinsTitle: 'Монеты', playBtn: 'Играть', levelLabel: 'Уровень: ',
             coinsUnit: ' монеты', settingsAria: 'Настройки', coinsAria: 'Магазин монет', demoQuestion: 'Пример вопроса', demoAnswer: 'ПРИМЕР',
             shareText: 'Попробуй угадать вместе со мной: ', linkCopied: 'Ссылка на игру скопирована! Отправьте её другу 🎉',
@@ -1053,7 +1087,7 @@ function generateGameHTML(options) {
             restart: '🔄 Restart game', restartConfirm: 'Restart the game? Your coins and level progress will be reset.',
             soundOn: '🔊 Sound: On', soundOff: '🔇 Sound: Off', close: 'Close',
             revealLetterLabel: 'Reveal a letter', removeExtraLabel: 'Remove extra letters', showAnswerLabel: 'Complete level',
-            imageAlt: 'Image', congrats: '🎉 Congratulations!', allPassed: 'You completed all levels!', playAgain: '🔄 Play again',
+            imageAlt: 'Image', congrats: '🎉 Congratulations!', allPassed: 'You completed all available levels! Watch for new levels from the game author.', playAgain: '🔄 Play again',
             correctMsg: '✅ Correct! Level complete!', coinsTitle: 'Coins', playBtn: 'Play', levelLabel: 'Level: ',
             coinsUnit: ' coins', settingsAria: 'Settings', coinsAria: 'Coin shop', demoQuestion: 'Example question', demoAnswer: 'EXAMPLE',
             shareText: 'Try to guess along with me: ', linkCopied: 'Game link copied! Send it to a friend 🎉',
@@ -1077,6 +1111,8 @@ function generateGameHTML(options) {
     const textColor = useCustom ? document.getElementById('textColor').value : defaultColors.textColor;
     const letterBtnColor = useCustom ? document.getElementById('letterBtnColor').value : defaultColors.letterBtnColor;
     const letterTextColor = useCustom ? document.getElementById('letterTextColor').value : defaultColors.letterTextColor;
+    const pillColor = useCustom ? document.getElementById('pillColor').value : defaultColors.pillColor;
+    const pillTextColor = useCustom ? document.getElementById('pillTextColor').value : defaultColors.pillTextColor;
 
     // Новая иконка монетки (инлайн SVG, используется в шапке и в окне подсказок)
     const COIN_ICON_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align:-4px;"><defs><radialGradient id="coinGrad" cx="35%" cy="30%" r="75%"><stop offset="0%" stop-color="#fff6cf"/><stop offset="45%" stop-color="#ffd23f"/><stop offset="100%" stop-color="#e8960a"/></radialGradient></defs><circle cx="12" cy="12" r="10.5" fill="url(#coinGrad)" stroke="#b8760a" stroke-width="1.2"/><circle cx="12" cy="12" r="7.2" fill="none" stroke="#fff3c4" stroke-width="1" opacity="0.6"/><text x="12" y="16.2" font-size="10.5" font-weight="bold" text-anchor="middle" fill="#a5670a" font-family="Arial, sans-serif">$</text></svg>';
@@ -1112,15 +1148,15 @@ function generateGameHTML(options) {
     htmlLines.push('<style>');
     htmlLines.push('* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }');
     htmlLines.push('html, body { height: 100%; }');
-    htmlLines.push('body { font-family: \'Segoe UI\', sans-serif; background: ' + bgColor + '; color: ' + textColor + '; display: flex; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; padding: 16px; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); overflow-x: hidden; }');
-    htmlLines.push('.game-container { max-width: min(460px, 94vw); width: 100%; max-height: 96dvh; overflow: hidden; background: ' + cardColor + '; border-radius: 20px; padding: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.6); display: flex; flex-direction: column; }');
+    htmlLines.push('body { font-family: \'Segoe UI\', sans-serif; background: ' + bgColor + '; color: ' + textColor + '; display: flex; justify-content: center; align-items: stretch; min-height: 100vh; min-height: 100dvh; margin: 0; overflow-x: hidden; overflow-y: hidden; }');
+    htmlLines.push('.game-container { width: 100%; max-width: none; height: 100vh; height: 100dvh; max-height: none; overflow: hidden; background: ' + cardColor + '; border-radius: 0; padding: 16px; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); box-shadow: none; display: flex; flex-direction: column; }');
     htmlLines.push('.header { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-size: clamp(14px, 4vw, 16px); color: ' + textColor + '; }');
     htmlLines.push('.icon-btn { background: transparent; border: none; color: ' + textColor + '; font-size: 24px; cursor: pointer; padding: 4px 8px; line-height: 1; border-radius: 8px; }');
     htmlLines.push('.icon-btn:active { background: rgba(255,255,255,0.1); }');
-    htmlLines.push('.level-pill { background: #2ecc71; color: #fff; border: none; padding: 8px 16px; border-radius: 30px; font-weight: bold; font-size: clamp(13px, 3.6vw, 15px); cursor: pointer; white-space: nowrap; box-shadow: 0 3px 0 #1e8449; }');
-    htmlLines.push('.level-pill:active { transform: translateY(2px); box-shadow: none; }');
+    htmlLines.push('.level-pill { background: ' + pillColor + '; color: ' + pillTextColor + '; border: none; padding: 8px 16px; border-radius: 30px; font-weight: bold; font-size: clamp(13px, 3.6vw, 15px); cursor: pointer; white-space: nowrap; }');
+    htmlLines.push('.level-pill:active { transform: translateY(2px); }');
     htmlLines.push('.header-spacer { flex: 1 1 auto; }');
-    htmlLines.push('.coins-pill { background: #1abc9c; color: #fff; padding: 6px 14px 6px 10px; border-radius: 30px; font-weight: bold; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-size: clamp(14px, 4vw, 16px); border: none; cursor: pointer; font-family: inherit; }');
+    htmlLines.push('.coins-pill { background: ' + pillColor + '; color: ' + pillTextColor + '; padding: 6px 14px 6px 10px; border-radius: 30px; font-weight: bold; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-size: clamp(14px, 4vw, 16px); border: none; cursor: pointer; font-family: inherit; }');
     htmlLines.push('.coin-icon { display: inline-flex; }');
     htmlLines.push('.coin-icon svg { display: block; }');
     htmlLines.push('.question-block { text-align: center; margin-bottom: 10px; }');
@@ -1147,9 +1183,9 @@ function generateGameHTML(options) {
     htmlLines.push('@keyframes splashSpin { to { transform: rotate(360deg); } }');
     htmlLines.push('@keyframes shakeSlot { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }');
     htmlLines.push('.action-row { display: flex; gap: 10px; margin: 10px 0; }');
-    htmlLines.push('.action-btn { flex: 1; background: #1abc9c; border: none; border-radius: 30px; padding: 12px 10px; color: #fff; font-size: clamp(13px, 3.6vw, 15px); font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 #12836d; transition: 0.1s; }');
-    htmlLines.push('.action-btn-accent { background: #2ecc71; box-shadow: 0 3px 0 #1e8449; }');
-    htmlLines.push('.action-btn:active { transform: translateY(3px); box-shadow: none; }');
+    htmlLines.push('.action-btn { flex: 1; background: ' + btnColor + '; border: none; border-radius: 30px; padding: 12px 10px; color: ' + btnTextColor + '; font-size: clamp(13px, 3.6vw, 15px); font-weight: bold; cursor: pointer; transition: 0.1s; }');
+    htmlLines.push('.action-btn-accent { background: ' + pillColor + '; color: ' + pillTextColor + '; }');
+    htmlLines.push('.action-btn:active { transform: translateY(2px); }');
     htmlLines.push('.message { text-align: center; margin: 8px 0; font-size: 18px; min-height: 26px; color: ' + textColor + '; }');
     htmlLines.push('.btn-next { background: ' + btnColor + '; color: ' + btnTextColor + '; border: none; border-radius: 30px; padding: 12px 30px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.1s; box-shadow: 0 4px 0 #b8960f; }');
     htmlLines.push('.btn-next:active { transform: translateY(4px); box-shadow: none; }');
@@ -1182,6 +1218,7 @@ function generateGameHTML(options) {
     htmlLines.push('.level-cell { position: relative; aspect-ratio: 1 / 1; border-radius: 12px; background: ' + letterBtnColor + '; display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 5vw, 22px); font-weight: bold; color: ' + letterTextColor + '; overflow: hidden; border: none; cursor: default; }');
     htmlLines.push('.level-cell.locked { opacity: 0.55; }');
     htmlLines.push('.level-cell.playable, .level-cell.completed { cursor: pointer; }');
+    htmlLines.push('.level-cell.completed.locked-replay { cursor: default; opacity: 0.85; }');
     htmlLines.push('.level-cell img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }');
     htmlLines.push('.level-cell .lock-icon { position: absolute; top: 6px; right: 6px; font-size: 14px; background: rgba(0,0,0,0.5); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }');
     htmlLines.push('.level-cell .check-icon { position: absolute; top: 4px; right: 4px; background: #2ecc71; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 0 0 2px ' + cardColor + '; }');
@@ -1205,29 +1242,26 @@ function generateGameHTML(options) {
     htmlLines.push('.coin-shop-row { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid rgba(255,255,255,0.08); }');
     htmlLines.push('.coin-shop-item-icon { font-size: 22px; flex: 0 0 auto; }');
     htmlLines.push('.coin-shop-item-label { flex: 1 1 auto; text-align: left; font-weight: bold; color: ' + textColor + '; font-size: 16px; }');
-    htmlLines.push('.coin-buy-btn { background: #ff9800; color: #fff; border: none; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 15px; font-family: inherit; cursor: pointer; white-space: nowrap; }');
-    htmlLines.push('.coin-buy-btn:hover { background: #fb8c00; }');
+    htmlLines.push('.coin-buy-btn { background: ' + btnColor + '; color: ' + btnTextColor + '; border: none; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 15px; font-family: inherit; cursor: pointer; white-space: nowrap; }');
     htmlLines.push('.coin-buy-btn:disabled { opacity: 0.5; cursor: default; }');
     htmlLines.push('.coin-shop-note { font-size: 12px; color: #999; margin-top: 12px; min-height: 16px; }');
     htmlLines.push('@media (min-width: 900px) {');
-    htmlLines.push('.game-container { max-width: 620px; padding: 32px; }');
+    htmlLines.push('body { padding: 24px; }');
+    htmlLines.push('.game-container { max-width: 620px; width: 100%; height: auto; max-height: 92dvh; padding: 32px; border-radius: 20px; box-shadow: 0 0 30px rgba(0,0,0,0.6); }');
     htmlLines.push('.question-block h2 { font-size: 30px; }');
     htmlLines.push('.letter-btn { width: 56px; height: 56px; font-size: 28px; }');
     htmlLines.push('.answer-slot { width: 44px; height: 52px; font-size: 32px; }');
-    htmlLines.push('.btn-next, .load-more-btn { font-size: 20px; padding: 14px 30px; }');
+    htmlLines.push('.load-more-btn { font-size: 20px; padding: 14px 30px; }');
     htmlLines.push('.action-btn { font-size: 16px; padding: 14px 10px; }');
     htmlLines.push('.image-frame { max-height: 46vh; }');
     htmlLines.push('}');
     htmlLines.push('@media (max-height: 480px) and (orientation: landscape) {');
-    htmlLines.push('body { align-items: flex-start; }');
-    htmlLines.push('.game-container { max-height: none; }');
     htmlLines.push('.question-block { margin-bottom: 10px; }');
     htmlLines.push('.image-frame { max-height: 22vh; }');
     htmlLines.push('.letter-grid { margin: 10px 0; }');
     htmlLines.push('.answer-display { margin: 8px 0; min-height: 40px; }');
     htmlLines.push('}');
     htmlLines.push('@media (max-width: 340px) {');
-    htmlLines.push('.game-container { padding: 14px; }');
     htmlLines.push('.action-btn { padding: 10px 6px; font-size: 12px; }');
     htmlLines.push('}');
     htmlLines.push('</style>');
@@ -1266,7 +1300,7 @@ function generateGameHTML(options) {
     htmlLines.push('</div>');
     htmlLines.push('<div class="message" id="message"></div>');
     htmlLines.push('<div class="letter-grid" id="letterGrid"></div>');
-    htmlLines.push('<button class="btn-next" id="nextBtn" disabled>' + T.next + '</button>');
+    htmlLines.push('<button class="btn-next" id="nextBtn" disabled style="display:none;">' + T.next + '</button>');
     htmlLines.push('<button class="load-more-btn" id="loadMoreBtn" style="display:none;">' + T.loadMore + '</button>');
     htmlLines.push('<button class="history-toggle" id="historyToggle">' + T.historyToggle + '</button>');
     htmlLines.push('<div class="history-panel" id="historyPanel"></div>');
@@ -1274,7 +1308,6 @@ function generateGameHTML(options) {
     htmlLines.push('<div class="game-over" id="gameOverArea" style="display:none;">');
     htmlLines.push('<h2>' + T.congrats + '</h2>');
     htmlLines.push('<p style="color:' + textColor + ';">' + T.allPassed + '</p>');
-    htmlLines.push('<button class="btn-next" id="restartBtn">' + T.playAgain + '</button>');
     htmlLines.push('</div>');
     htmlLines.push('<div class="footer-progress" id="progressText"></div>');
     htmlLines.push('</div>');
@@ -1308,7 +1341,6 @@ function generateGameHTML(options) {
     }
     htmlLines.push('<button class="settings-menu-item" id="menuSoundBtn"><span id="menuSoundLabel">' + (soundEnabled ? T.soundOn : T.soundOff) + '</span></button>');
     htmlLines.push('<button class="settings-menu-item" id="menuShareBtn"><span>' + T.share + '</span></button>');
-    htmlLines.push('<div class="settings-row"><button class="action-btn" id="restartGameBtn" style="width:100%;">' + T.restart + '</button></div>');
     if (creatorInfo) {
         htmlLines.push('<div class="settings-about"><b>' + T.aboutGame + '</b> ' + escapeHtml(gameTitle) + '<br>' + T.createdBy + escapeHtml(creatorInfo) + '</div>');
     }
@@ -1391,7 +1423,6 @@ function generateGameHTML(options) {
     htmlLines.push('const nextBtn = document.getElementById(\'nextBtn\');');
     htmlLines.push('const gameArea = document.getElementById(\'gameArea\');');
     htmlLines.push('const gameOverArea = document.getElementById(\'gameOverArea\');');
-    htmlLines.push('const restartBtn = document.getElementById(\'restartBtn\');');
     htmlLines.push('const progressText = document.getElementById(\'progressText\');');
     htmlLines.push('const historyPanel = document.getElementById(\'historyPanel\');');
     htmlLines.push('const historyToggle = document.getElementById(\'historyToggle\');');
@@ -1407,7 +1438,6 @@ function generateGameHTML(options) {
     htmlLines.push('const hintsModalOverlay = document.getElementById(\'hintsModalOverlay\');');
     htmlLines.push('const settingsModalOverlay = document.getElementById(\'settingsModalOverlay\');');
     htmlLines.push('const levelGrid = document.getElementById(\'levelGrid\');');
-    htmlLines.push('const restartGameBtn = document.getElementById(\'restartGameBtn\');');
     htmlLines.push('let completedLevels = [];');
     htmlLines.push('');
     htmlLines.push('function openModal(overlay) { overlay.classList.add(\'open\'); }');
@@ -1422,7 +1452,6 @@ function generateGameHTML(options) {
     htmlLines.push('document.getElementById(\'levelModalClose2\').addEventListener(\'click\', () => closeModal(levelModalOverlay));');
     htmlLines.push('hintsBtn.addEventListener(\'click\', () => openModal(hintsModalOverlay));');
     htmlLines.push('document.getElementById(\'hintsModalClose\').addEventListener(\'click\', () => closeModal(hintsModalOverlay));');
-    htmlLines.push('restartGameBtn.addEventListener(\'click\', () => { closeModal(settingsModalOverlay); if (confirm(' + J(T.restartConfirm) + ')) { resetProgress(); initGame(); } });');
     if (coinShopEnabled) {
         htmlLines.push('const coinShopModalOverlay = document.getElementById(\'coinShopModalOverlay\');');
         htmlLines.push('coinsPillBtn.addEventListener(\'click\', () => openModal(coinShopModalOverlay));');
@@ -1531,7 +1560,8 @@ function generateGameHTML(options) {
     htmlLines.push('if (lvl && lvl.image) { const im = document.createElement(\'img\'); im.src = lvl.image; cell.appendChild(im); }');
     htmlLines.push('else { cell.textContent = (i + 1); }');
     htmlLines.push('const chk = document.createElement(\'span\'); chk.className = \'check-icon\'; chk.textContent = \'✓\'; cell.appendChild(chk);');
-    htmlLines.push('cell.addEventListener(\'click\', () => { closeModal(levelModalOverlay); loadLevel(i); });');
+    htmlLines.push('if (!gameCompleted) cell.addEventListener(\'click\', () => { closeModal(levelModalOverlay); loadLevel(i); });');
+    htmlLines.push('else cell.classList.add(\'locked-replay\');');
     htmlLines.push('} else if (i === maxUnlocked) {');
     htmlLines.push('cell.classList.add(\'playable\');');
     htmlLines.push('cell.textContent = (i + 1);');
@@ -1657,8 +1687,6 @@ function generateGameHTML(options) {
     htmlLines.push('if (LEVELS_API_URL && hasMoreLevels) {');
     htmlLines.push('loadMoreBtn.style.display = \'block\';');
     htmlLines.push('nextBtn.disabled = true;');
-    htmlLines.push('nextBtn.textContent = ' + J(T.loadMore) + ';');
-    htmlLines.push('nextBtn.onclick = loadMoreLevels;');
     htmlLines.push('if (AUTO_LOAD_MORE) { loadMoreLevels(); }');
     htmlLines.push('} else { loadMoreBtn.style.display = \'none\'; showGameOver(); }');
     htmlLines.push('return;');
@@ -1670,8 +1698,6 @@ function generateGameHTML(options) {
     htmlLines.push('hintUsed = { removeExtra: false, showAnswer: false };');
     htmlLines.push('message.textContent = \'\';');
     htmlLines.push('nextBtn.disabled = true;');
-    htmlLines.push('nextBtn.textContent = ' + J(T.next) + ';');
-    htmlLines.push('nextBtn.onclick = null;');
     htmlLines.push('levelNum.textContent = index + 1;');
     htmlLines.push('totalLevels.textContent = allLevels.length;');
     htmlLines.push('levelQuestion.textContent = level.question;');
@@ -1777,7 +1803,6 @@ function generateGameHTML(options) {
     htmlLines.push('');
     htmlLines.push('function onLevelPassed() {');
     htmlLines.push('const alreadyCompleted = completedLevels.includes(currentLevel);');
-    htmlLines.push('message.textContent = ' + J(T.correctMsg) + ';');
     htmlLines.push('sound.levelComplete();');
     htmlLines.push('nextBtn.disabled = false;');
     htmlLines.push('markLevelCompleted(currentLevel);');
@@ -1894,7 +1919,6 @@ function generateGameHTML(options) {
     htmlLines.push('setTimeout(proceed, 4000);');
     htmlLines.push('}');
     htmlLines.push('');
-    htmlLines.push('nextBtn.addEventListener(\'click\', goNext);');
     htmlLines.push('loadMoreBtn.addEventListener(\'click\', loadMoreLevels);');
     htmlLines.push('');
     htmlLines.push('function showGameOver() {');
@@ -1904,7 +1928,6 @@ function generateGameHTML(options) {
     htmlLines.push('sound.gameOver();');
     htmlLines.push('}');
     htmlLines.push('');
-    htmlLines.push('restartBtn.addEventListener(\'click\', initGame);');
     htmlLines.push('');
     htmlLines.push('function updateProgress() {');
     htmlLines.push('progressText.textContent = ' + J(T.historyLevelLabel) + ' + (currentLevel+1) + ' + J(gameLang === 'en' ? ' of ' : ' из ') + ' + allLevels.length;');
@@ -1950,10 +1973,11 @@ function generateGameHTML(options) {
         htmlLines.push('(function() {');
         htmlLines.push('const ROLE_MAP = [');
         htmlLines.push('{ sel: \'.letter-btn\', role: \'letterBtnColor\' },');
-        htmlLines.push('{ sel: \'.answer-slot, .answer-space\', role: \'textColor\' },');
-        htmlLines.push('{ sel: \'.coin-buy-btn\', role: \'btnColor\' },');
-        htmlLines.push('{ sel: \'.btn-next, .action-btn, .load-more-btn, .history-toggle, .settings-menu-item, .hint-row\', role: \'btnColor\' },');
-        htmlLines.push('{ sel: \'.level-pill, .coins-pill, .icon-btn\', role: \'btnColor\' },');
+        htmlLines.push('{ sel: \'.answer-slot\', role: \'btnColor\' },');
+        htmlLines.push('{ sel: \'.coin-buy-btn, .action-btn, .load-more-btn\', role: \'btnColor\' },');
+        htmlLines.push('{ sel: \'.history-toggle\', role: \'letterBtnColor\' },');
+        htmlLines.push('{ sel: \'.level-pill, .coins-pill\', role: \'pillColor\' },');
+        htmlLines.push('{ sel: \'.icon-btn, .hint-row, .settings-menu-item\', role: \'textColor\' },');
         htmlLines.push('{ sel: \'.modal-box, .game-container\', role: \'cardColor\' },');
         htmlLines.push('{ sel: \'h2, .message, .footer-progress, .modal-header h3, .coin-shop-item-label\', role: \'textColor\' },');
         htmlLines.push('{ sel: \'body\', role: \'bgColor\' }');
@@ -2109,6 +2133,40 @@ window.addEventListener('message', (e) => {
 loadProjectFromStorage();
 renderLevelList();
 renderCoinPackages();
+
+// ============================================================
+// 9. Выбор языка игры (обязателен до создания уровней)
+// ============================================================
+function updateLanguageLock() {
+    const langSelect = document.getElementById('gameLang');
+    if (langSelect) langSelect.disabled = levels.length > 0;
+}
+updateLanguageLock();
+
+if (!languageChosen) {
+    document.getElementById('langGateOverlay').classList.add('open');
+}
+
+document.querySelectorAll('.lang-gate-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.getElementById('gameLang').value = btn.dataset.lang;
+        languageChosen = true;
+        document.getElementById('langGateOverlay').classList.remove('open');
+        saveProjectToStorage();
+        updateLanguageLock();
+    });
+});
+
+function getLanguageAlphabetRegex(lang) {
+    return lang === 'en' ? /[а-яёА-ЯЁ]/ : /[a-zA-Z]/;
+}
+
+function getForeignLetters(str, lang) {
+    const re = new RegExp(getLanguageAlphabetRegex(lang).source, 'g');
+    const found = str.match(re);
+    return found ? [...new Set(found)] : [];
+}
+
 </script>
 </body>
 </html>
