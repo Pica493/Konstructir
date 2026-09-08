@@ -67,7 +67,15 @@
             border: 1px solid #2a2a4a; border-radius: 8px; padding: 14px;
             display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px;
         }
-        .level-card { background: #1a1a2e; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+        .level-card { background: #1a1a2e; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; position: relative; transition: transform 0.15s, opacity 0.15s; }
+        .level-card.dragging { opacity: 0.4; }
+        .level-card.drag-over { outline: 2px dashed #6c5ce7; outline-offset: 2px; transform: scale(1.02); }
+        .level-card-drag-handle {
+            position: absolute; top: 6px; left: 6px; z-index: 2; background: rgba(0,0,0,0.5); color: #fff;
+            width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+            font-size: 15px; cursor: grab; user-select: none;
+        }
+        .level-card-drag-handle:active { cursor: grabbing; }
         .level-card-thumb {
             position: relative; width: 100%; aspect-ratio: 1/1; background-size: cover; background-position: center;
             background-color: #2a2a4a; display: flex; align-items: flex-end; justify-content: flex-start;
@@ -163,6 +171,7 @@
         <button data-tab="coins">Монеты</button>
         <button data-tab="ads">Реклама (РСЯ)</button>
         <button data-tab="preview">Предпросмотр</button>
+        <button data-tab="apk">📦 APK</button>
     </div>
 
     <!-- Вкладка "Мои игры" -->
@@ -223,6 +232,7 @@
             <button class="btn success" id="addLevelBtn">➕ Добавить уровень</button>
             <button class="btn secondary" id="clearAllBtn">🗑 Очистить все</button>
         </div>
+        <p style="color:#999; font-size:13px; margin: 6px 0 0;">↕️ Перетащите карточку уровня, чтобы изменить порядок уровней.</p>
         <div class="level-list" id="levelList"></div>
 
         <div style="background:#1a1a2e; padding:15px; border-radius:8px; margin:15px 0;">
@@ -327,6 +337,10 @@
             <button class="btn" id="removeSplashImageBtn" style="display:none;">✕ Убрать картинку загрузки</button>
 
             <div class="form-group" style="margin-top:16px;">
+                <label>Описание игры (покажется в разделе «Об игре» внутри игры)</label>
+                <textarea id="gameAboutText" placeholder="Например: Угадывай мультфильмы по кадру! Новые уровни каждую неделю." maxlength="300"></textarea>
+            </div>
+            <div class="form-group">
                 <label>Контакт создателя (email или ссылка — покажется в игре в разделе «Об игре»)</label>
                 <input type="text" id="creatorInfo" placeholder="Например: my-email@example.com">
             </div>
@@ -337,6 +351,7 @@
     <div id="tab-coins" class="tab-content">
         <div class="design-panel">
             <h3>Покупка монет (Яндекс Игры)</h3>
+            <p style="background:rgba(255,215,0,0.1); border-radius:8px; padding:10px 14px; color:#ffd700; font-size:13px;">💡 Это монетизация именно платформы Яндекс Игры. Если готовите версию для ВК Плей, Google Play или APK — оставьте галочку ниже выключенной, тогда в игру вообще не попадёт код Yandex SDK.</p>
             <div class="checkbox-group">
                 <input type="checkbox" id="coinShopEnabled">
                 <label for="coinShopEnabled">Включить магазин монет в игре (клик по монеткам открывает меню покупки)</label>
@@ -357,6 +372,7 @@
     <div id="tab-ads" class="tab-content">
         <div class="design-panel">
             <h3>Реклама РСЯ (Рекламная сеть Яндекса)</h3>
+            <p style="background:rgba(255,215,0,0.1); border-radius:8px; padding:10px 14px; color:#ffd700; font-size:13px;">💡 РСЯ — реклама именно платформы Яндекс Игры. Для ВК Плей / Google Play / APK эту галочку стоит оставить выключенной — в игру не попадёт ни один Yandex-скрипт.</p>
             <div class="checkbox-group">
                 <input type="checkbox" id="adsEnabled">
                 <label for="adsEnabled">Включить рекламу в экспортируемой игре</label>
@@ -390,11 +406,49 @@
         <button class="btn" id="closePreviewBtn" style="margin-top:10px;">Закрыть предпросмотр</button>
     </div>
 
+    <!-- Вкладка экспорта в APK -->
+    <div id="tab-apk" class="tab-content">
+        <div class="design-panel">
+            <h3>📦 Экспорт для Android (APK)</h3>
+            <p style="color:#ddd; font-size:14px; line-height:1.6;">
+                Честно: собрать по-настоящему рабочий, подписанный APK-файл прямо здесь, в браузере, невозможно — для этого нужен полноценный набор инструментов Android (Android SDK, Gradle, ключ подписи), которого нет ни у браузера, ни у этого конструктора. Ни один инструмент, работающий только на JavaScript в браузере, этого не умеет.
+            </p>
+            <p style="color:#ddd; font-size:14px; line-height:1.6;">
+                Зато я подготовил для вас всё остальное — два реальных рабочих пути:
+            </p>
+            <h4 style="color:#f5a623; margin-top:18px;">Вариант 1 — без установки программ (проще всего)</h4>
+            <p style="color:#ddd; font-size:14px; line-height:1.6;">
+                Экспортируйте игру обычной кнопкой «Скачать игру (HTML)» на вкладке «Конструктор», затем загрузите этот файл в один из бесплатных/условно-бесплатных сервисов «сайт → APK»:
+                <a href="https://www.pwabuilder.com" target="_blank" style="color:#6c5ce7;">PWABuilder.com</a> (бесплатно, от Microsoft),
+                <a href="https://median.co" target="_blank" style="color:#6c5ce7;">Median.co</a>,
+                <a href="https://appilix.com" target="_blank" style="color:#6c5ce7;">Appilix.com</a>.
+                Они сами соберут и подпишут APK/AAB — коду ничего писать не нужно.
+            </p>
+            <h4 style="color:#f5a623; margin-top:18px;">Вариант 2 — свой APK через Capacitor (для тех, кто не против один раз поставить Android Studio)</h4>
+            <p style="color:#ddd; font-size:14px; line-height:1.6;">
+                Кнопка ниже скачает ZIP-архив с готовым проектом Capacitor: ваша игра уже вложена внутрь как готовое приложение, плюс подробная инструкция (README) с точными командами. На своём компьютере (не здесь) нужно будет:
+            </p>
+            <pre style="background:#0f0f1f; padding:12px; border-radius:8px; color:#8be9fd; font-size:13px; overflow-x:auto;">npm install
+npx cap add android
+npx cap sync android
+cd android
+./gradlew assembleDebug</pre>
+            <p style="color:#ddd; font-size:14px; line-height:1.6;">После этого APK появится в <code>android/app/build/outputs/apk/debug/</code>. Понадобится Node.js и Android Studio (бесплатны).</p>
+            <div class="checkbox-group" style="margin-top:14px;">
+                <input type="checkbox" id="apkStripYandex" checked>
+                <label for="apkStripYandex">Не включать в APK-проект код Yandex SDK / РСЯ, даже если они включены на других вкладках (рекомендуется — на Google Play/ВК Плей это не нужно и может быть отклонено модерацией)</label>
+            </div>
+            <button class="btn" id="downloadApkProjectBtn" style="margin-top:14px;">📦 Скачать проект для сборки APK (ZIP)</button>
+            <p id="apkStatus" style="color:#999; font-size:13px; margin-top:8px;"></p>
+        </div>
+    </div>
+
     <div class="footer">
         ⚡ При использовании подгрузки уровней из JSON, картинки должны быть доступны по прямым ссылкам.
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 // ============================================================
 // 1. Управление данными уровней и дизайна
@@ -440,6 +494,7 @@ function buildProjectData() {
         languageChosen: languageChosen,
         splashImageDataUrl: typeof splashImageDataUrl !== 'undefined' ? splashImageDataUrl : null,
         creatorInfo: document.getElementById('creatorInfo') ? document.getElementById('creatorInfo').value.trim() : '',
+        gameAboutText: document.getElementById('gameAboutText') ? document.getElementById('gameAboutText').value.trim() : '',
         costRevealLetter: parseInt(document.getElementById('costRevealLetter').value) || 20,
         costRemoveExtra: parseInt(document.getElementById('costRemoveExtra').value) || 30,
         costShowAnswer: parseInt(document.getElementById('costShowAnswer').value) || 50,
@@ -478,6 +533,7 @@ function applyProjectData(data) {
         if (typeof setSplashImagePreviewOnly === 'function') setSplashImagePreviewOnly(splashImageDataUrl);
     }
     if (document.getElementById('creatorInfo')) document.getElementById('creatorInfo').value = data.creatorInfo || '';
+    if (document.getElementById('gameAboutText')) document.getElementById('gameAboutText').value = data.gameAboutText || '';
     document.getElementById('costRevealLetter').value = data.costRevealLetter || 20;
     document.getElementById('costRemoveExtra').value = data.costRemoveExtra || 30;
     document.getElementById('costShowAnswer').value = data.costShowAnswer || 50;
@@ -688,6 +744,14 @@ function renderLevelList() {
     levels.forEach((level, idx) => {
         const card = document.createElement('div');
         card.className = 'level-card';
+        card.draggable = true;
+        card.dataset.index = idx;
+
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'level-card-drag-handle';
+        dragHandle.textContent = '⠿';
+        dragHandle.title = 'Перетащите, чтобы изменить порядок';
+        card.appendChild(dragHandle);
 
         const thumb = document.createElement('div');
         thumb.className = 'level-card-thumb' + (level.image ? '' : ' no-image');
@@ -720,6 +784,30 @@ function renderLevelList() {
         editBtn.addEventListener('click', (e) => { e.stopPropagation(); loadLevelToEdit(idx); });
         body.appendChild(editBtn);
         card.appendChild(body);
+
+        card.addEventListener('dragstart', (e) => {
+            card.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(idx));
+        });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+        card.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            card.classList.add('drag-over');
+        });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', (e) => {
+            e.preventDefault();
+            card.classList.remove('drag-over');
+            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const toIndex = parseInt(card.dataset.index);
+            if (isNaN(fromIndex) || fromIndex === toIndex) return;
+            const [moved] = levels.splice(fromIndex, 1);
+            levels.splice(toIndex, 0, moved);
+            renderLevelList();
+            saveProjectToStorage();
+        });
 
         container.appendChild(card);
     });
@@ -1055,14 +1143,15 @@ function generateGameHTML(options) {
     const gameLang = (document.getElementById('gameLang') && document.getElementById('gameLang').value) || 'ru';
     const gameTitle = (document.getElementById('gameTitle') && document.getElementById('gameTitle').value.trim()) || (gameLang === 'en' ? 'Quiz' : 'Викторина');
     const creatorInfo = (document.getElementById('creatorInfo') && document.getElementById('creatorInfo').value.trim()) || '';
+    const gameAboutText = (document.getElementById('gameAboutText') && document.getElementById('gameAboutText').value.trim()) || '';
     const STRINGS = {
         ru: {
             loading: 'Загрузка...', friendHelp: '🤝 Помощь друга', hints: '💡 Подсказки', next: 'Далее →',
             loadMore: '📥 Загрузить новые уровни', loadingMore: '⏳ Загрузка...', allLoaded: '🏁 Все уровни загружены',
             retryLoad: '🔄 Попробовать снова', loadMoreFailed: 'Не удалось загрузить новые уровни. Проверьте интернет-соединение.',
-            loadError: 'Ошибка загрузки', historyToggle: '📊 История уровней', noHistory: 'Нет пройденных уровней',
-            historyLevelLabel: 'Уровень ', historyPassed: '✅ Пройден', historyFailed: '❌ Не пройден',
-            settingsTitle: 'Настройки', levelsTitle: 'Уровни', coinsMenu: '🪙 Монеты', share: '🔗 Поделиться',
+            loadError: 'Ошибка загрузки',
+            historyLevelLabel: 'Уровень ',
+            settingsTitle: 'Настройки', levelsTitle: 'Уровни', coinsMenu: 'Монеты', share: '🔗 Поделиться',
             restart: '🔄 Начать игру заново', restartConfirm: 'Начать игру заново? Прогресс монет и уровней будет сброшен.',
             soundOn: '🔊 Звук: Вкл.', soundOff: '🔇 Звук: Выкл.', close: 'Закрыть',
             revealLetterLabel: 'Показать букву', removeExtraLabel: 'Убрать лишние', showAnswerLabel: 'Пройти уровень',
@@ -1081,9 +1170,9 @@ function generateGameHTML(options) {
             loading: 'Loading...', friendHelp: '🤝 Ask a Friend', hints: '💡 Hints', next: 'Next →',
             loadMore: '📥 Load more levels', loadingMore: '⏳ Loading...', allLoaded: '🏁 All levels loaded',
             retryLoad: '🔄 Try again', loadMoreFailed: 'Failed to load more levels. Check your internet connection.',
-            loadError: 'Loading error', historyToggle: '📊 Level history', noHistory: 'No completed levels yet',
-            historyLevelLabel: 'Level ', historyPassed: '✅ Passed', historyFailed: '❌ Not passed',
-            settingsTitle: 'Settings', levelsTitle: 'Levels', coinsMenu: '🪙 Coins', share: '🔗 Share',
+            loadError: 'Loading error',
+            historyLevelLabel: 'Level ',
+            settingsTitle: 'Settings', levelsTitle: 'Levels', coinsMenu: 'Coins', share: '🔗 Share',
             restart: '🔄 Restart game', restartConfirm: 'Restart the game? Your coins and level progress will be reset.',
             soundOn: '🔊 Sound: On', soundOff: '🔇 Sound: Off', close: 'Close',
             revealLetterLabel: 'Reveal a letter', removeExtraLabel: 'Remove extra letters', showAnswerLabel: 'Complete level',
@@ -1164,6 +1253,7 @@ function generateGameHTML(options) {
     htmlLines.push('.image-frame { width: 100%; aspect-ratio: 1 / 1; max-height: 42vh; margin: 0 auto; border-radius: 14px; overflow: hidden; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; }');
     htmlLines.push('.image-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }');
     htmlLines.push('.letter-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 12px 0; }');
+    htmlLines.push('#gameArea { padding-bottom: 14px; }');
     htmlLines.push('.letter-btn { width: clamp(38px, 10vw, 48px); height: clamp(38px, 10vw, 48px); background: ' + letterBtnColor + '; border: none; border-radius: 10px; color: ' + letterTextColor + '; font-size: clamp(18px, 5vw, 24px); font-weight: bold; cursor: pointer; transition: 0.1s; box-shadow: 0 4px 0 #0a0a1a; }');
     htmlLines.push('.letter-btn:active { transform: translateY(4px); box-shadow: none; }');
     htmlLines.push('.letter-btn.used { opacity: 0.3; pointer-events: none; }');
@@ -1194,13 +1284,6 @@ function generateGameHTML(options) {
     htmlLines.push('.game-over { text-align: center; padding: 30px 0; }');
     htmlLines.push('.game-over h2 { color: ' + btnColor + '; font-size: 28px; }');
     htmlLines.push('.game-over button { margin-top: 20px; }');
-    htmlLines.push('.history-toggle { background: ' + letterBtnColor + '; border: none; color: ' + letterTextColor + '; padding: 6px 14px; border-radius: 30px; cursor: pointer; font-size: 14px; margin-top: 10px; }');
-    htmlLines.push('.history-toggle:hover { background: #3a3a5a; }');
-    htmlLines.push('.history-panel { background: #0f0f1f; border-radius: 8px; padding: 10px; margin: 10px 0; max-height: 200px; overflow-y: auto; display: none; }');
-    htmlLines.push('.history-panel.open { display: block; }');
-    htmlLines.push('.history-item { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid #222; font-size: 14px; color: ' + textColor + '; }');
-    htmlLines.push('.history-item .status { color: #27ae60; }');
-    htmlLines.push('.history-item .status.fail { color: #e94560; }');
     htmlLines.push('.sound-toggle { background: rgba(255,255,255,0.08); border: none; color: ' + textColor + '; font-size: 22px; cursor: pointer; padding: 6px 14px; border-radius: 30px; }');
     htmlLines.push('.load-more-btn { background: ' + btnColor + '; color: ' + btnTextColor + '; border: none; border-radius: 30px; padding: 12px 20px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; box-shadow: 0 4px 0 #b8960f; transition: 0.1s; }');
     htmlLines.push('.load-more-btn:active { transform: translateY(4px); box-shadow: none; }');
@@ -1232,7 +1315,9 @@ function generateGameHTML(options) {
     htmlLines.push('.hint-row:disabled { opacity: 0.4; pointer-events: none; }');
     htmlLines.push('.hint-cost { display: inline-flex; align-items: center; gap: 4px; font-weight: bold; color: ' + btnColor + '; }');
     htmlLines.push('.settings-row { display: flex; justify-content: space-between; align-items: center; margin: 14px 0; }');
-    htmlLines.push('.settings-menu-item { display: flex; justify-content: space-between; align-items: center; width: 100%; background: rgba(255,255,255,0.06); border: none; color: ' + textColor + '; font-family: inherit; font-size: 16px; padding: 14px 16px; border-radius: 12px; margin: 8px 0; cursor: pointer; text-align: left; }');
+    htmlLines.push('.settings-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; background: rgba(255,255,255,0.06); border: none; color: ' + textColor + '; font-family: inherit; font-size: 16px; padding: 14px 16px; border-radius: 12px; margin: 8px 0; cursor: pointer; text-align: left; }');
+    htmlLines.push('.settings-menu-item .settings-icon { display: inline-flex; align-items: center; }');
+    htmlLines.push('.settings-menu-item .settings-arrow { margin-left: auto; }');
     htmlLines.push('.settings-menu-item:hover { background: rgba(255,255,255,0.12); }');
     htmlLines.push('.settings-arrow { opacity: 0.6; font-size: 20px; }');
     htmlLines.push('.settings-about { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 13px; color: #999; line-height: 1.6; word-break: break-word; }');
@@ -1284,8 +1369,8 @@ function generateGameHTML(options) {
     htmlLines.push('<div class="header">');
     htmlLines.push('<button class="icon-btn" id="menuBtn" aria-label="' + T.settingsAria + '">&#9776;</button>');
     htmlLines.push('<span class="header-spacer"></span>');
-    htmlLines.push('<button class="level-pill" id="levelPillBtn">' + T.levelLabel + '<span id="levelNum">1</span></button>');
-    htmlLines.push('<button class="coins-pill" id="coinsPillBtn" aria-label="' + T.coinsAria + '"><span class="coin-icon" aria-hidden="true">' + COIN_ICON_SVG + '</span><span id="coinDisplay">' + startCoins + '</span></button>');
+    htmlLines.push('<button class="level-pill" id="levelPillBtn"><span class="btn-label">' + T.levelLabel + '<span id="levelNum">1</span></span></button>');
+    htmlLines.push('<button class="coins-pill" id="coinsPillBtn" aria-label="' + T.coinsAria + '"><span class="coin-icon" aria-hidden="true">' + COIN_ICON_SVG + '</span><span class="btn-label" id="coinDisplay">' + startCoins + '</span></button>');
     htmlLines.push('<span id="totalLevels" style="display:none;">' + totalBase + '</span>');
     htmlLines.push('</div>');
     htmlLines.push('<div id="gameArea">');
@@ -1295,15 +1380,13 @@ function generateGameHTML(options) {
     htmlLines.push('</div>');
     htmlLines.push('<div class="answer-display" id="answerDisplay"></div>');
     htmlLines.push('<div class="action-row">');
-    htmlLines.push('<button class="action-btn" id="friendHelpBtn">' + T.friendHelp + '</button>');
-    htmlLines.push('<button class="action-btn action-btn-accent" id="hintsBtn">' + T.hints + '</button>');
+    htmlLines.push('<button class="action-btn" id="friendHelpBtn"><span class="btn-label">' + T.friendHelp + '</span></button>');
+    htmlLines.push('<button class="action-btn action-btn-accent" id="hintsBtn"><span class="btn-label">' + T.hints + '</span></button>');
     htmlLines.push('</div>');
     htmlLines.push('<div class="message" id="message"></div>');
     htmlLines.push('<div class="letter-grid" id="letterGrid"></div>');
     htmlLines.push('<button class="btn-next" id="nextBtn" disabled style="display:none;">' + T.next + '</button>');
-    htmlLines.push('<button class="load-more-btn" id="loadMoreBtn" style="display:none;">' + T.loadMore + '</button>');
-    htmlLines.push('<button class="history-toggle" id="historyToggle">' + T.historyToggle + '</button>');
-    htmlLines.push('<div class="history-panel" id="historyPanel"></div>');
+    htmlLines.push('<button class="load-more-btn" id="loadMoreBtn" style="display:none;"><span class="btn-label">' + T.loadMore + '</span></button>');
     htmlLines.push('</div>');
     htmlLines.push('<div class="game-over" id="gameOverArea" style="display:none;">');
     htmlLines.push('<h2>' + T.congrats + '</h2>');
@@ -1337,12 +1420,15 @@ function generateGameHTML(options) {
     htmlLines.push('<div class="modal-box settings-modal">');
     htmlLines.push('<div class="modal-header"><h3>' + T.settingsTitle + '</h3><button class="modal-x" id="settingsModalClose">&times;</button></div>');
     if (coinShopEnabled) {
-        htmlLines.push('<button class="settings-menu-item" id="menuCoinsBtn"><span>' + T.coinsMenu + '</span><span class="settings-arrow">›</span></button>');
+        htmlLines.push('<button class="settings-menu-item" id="menuCoinsBtn"><span class="settings-icon">' + COIN_ICON_SVG + '</span><span>' + T.coinsMenu + '</span><span class="settings-arrow">›</span></button>');
     }
     htmlLines.push('<button class="settings-menu-item" id="menuSoundBtn"><span id="menuSoundLabel">' + (soundEnabled ? T.soundOn : T.soundOff) + '</span></button>');
     htmlLines.push('<button class="settings-menu-item" id="menuShareBtn"><span>' + T.share + '</span></button>');
-    if (creatorInfo) {
-        htmlLines.push('<div class="settings-about"><b>' + T.aboutGame + '</b> ' + escapeHtml(gameTitle) + '<br>' + T.createdBy + escapeHtml(creatorInfo) + '</div>');
+    if (creatorInfo || gameAboutText) {
+        htmlLines.push('<div class="settings-about"><b>' + T.aboutGame + '</b>' +
+            (gameAboutText ? '<br>' + escapeHtml(gameAboutText) : '') +
+            (creatorInfo ? '<br>' + T.createdBy + escapeHtml(creatorInfo) : '') +
+            '</div>');
     }
     htmlLines.push('</div>');
     htmlLines.push('</div>');
@@ -1406,7 +1492,6 @@ function generateGameHTML(options) {
     htmlLines.push('let gameCompleted = false;');
     htmlLines.push('let autoAdvanceTimer = null;');
     htmlLines.push('let hintUsed = { removeExtra: false, showAnswer: false };');
-    htmlLines.push('let levelHistory = [];');
     htmlLines.push('let isLoading = false;');
     htmlLines.push('let currentPage = 0;');
     htmlLines.push('let hasMoreLevels = true;');
@@ -1424,8 +1509,6 @@ function generateGameHTML(options) {
     htmlLines.push('const gameArea = document.getElementById(\'gameArea\');');
     htmlLines.push('const gameOverArea = document.getElementById(\'gameOverArea\');');
     htmlLines.push('const progressText = document.getElementById(\'progressText\');');
-    htmlLines.push('const historyPanel = document.getElementById(\'historyPanel\');');
-    htmlLines.push('const historyToggle = document.getElementById(\'historyToggle\');');
     htmlLines.push('const menuSoundBtn = document.getElementById(\'menuSoundBtn\');');
     htmlLines.push('const loadMoreBtn = document.getElementById(\'loadMoreBtn\');');
     htmlLines.push('');
@@ -1536,20 +1619,22 @@ function generateGameHTML(options) {
     htmlLines.push('function loadProgress() {');
     htmlLines.push('try {');
     htmlLines.push('const saved = localStorage.getItem(progressStorageKey());');
-    htmlLines.push('completedLevels = saved ? JSON.parse(saved) : [];');
-    htmlLines.push('} catch (e) { completedLevels = []; }');
+    htmlLines.push('const data = saved ? JSON.parse(saved) : null;');
+    htmlLines.push('if (data && Array.isArray(data)) { completedLevels = data; coins = START_COINS; }');
+    htmlLines.push('else if (data && typeof data === \'object\') { completedLevels = data.completedLevels || []; coins = (typeof data.coins === \'number\') ? data.coins : START_COINS; }');
+    htmlLines.push('else { completedLevels = []; coins = START_COINS; }');
+    htmlLines.push('} catch (e) { completedLevels = []; coins = START_COINS; }');
     htmlLines.push('}');
     htmlLines.push('function saveProgress() {');
-    htmlLines.push('try { localStorage.setItem(progressStorageKey(), JSON.stringify(completedLevels)); } catch (e) {}');
+    htmlLines.push('try { localStorage.setItem(progressStorageKey(), JSON.stringify({ completedLevels: completedLevels, coins: coins })); } catch (e) {}');
     htmlLines.push('}');
-    htmlLines.push('function resetProgress() { completedLevels = []; saveProgress(); }');
+    htmlLines.push('function resetProgress() { completedLevels = []; coins = START_COINS; saveProgress(); }');
     htmlLines.push('function markLevelCompleted(index) {');
     htmlLines.push('if (!completedLevels.includes(index)) { completedLevels.push(index); saveProgress(); }');
     htmlLines.push('}');
     htmlLines.push('function buildLevelGrid() {');
     htmlLines.push('levelGrid.innerHTML = \'\';');
     htmlLines.push('const total = Math.max(allLevels.length, currentLevel + 1);');
-    htmlLines.push('const maxUnlocked = completedLevels.length;');
     htmlLines.push('for (let i = 0; i < total; i++) {');
     htmlLines.push('const cell = document.createElement(\'button\');');
     htmlLines.push('cell.type = \'button\';');
@@ -1562,7 +1647,7 @@ function generateGameHTML(options) {
     htmlLines.push('const chk = document.createElement(\'span\'); chk.className = \'check-icon\'; chk.textContent = \'✓\'; cell.appendChild(chk);');
     htmlLines.push('if (!gameCompleted) cell.addEventListener(\'click\', () => { closeModal(levelModalOverlay); loadLevel(i); });');
     htmlLines.push('else cell.classList.add(\'locked-replay\');');
-    htmlLines.push('} else if (i === maxUnlocked) {');
+    htmlLines.push('} else {');
     htmlLines.push('cell.classList.add(\'playable\');');
     htmlLines.push('cell.textContent = (i + 1);');
     htmlLines.push('const overlay = document.createElement(\'div\'); overlay.className = \'play-overlay\';');
@@ -1570,10 +1655,6 @@ function generateGameHTML(options) {
     htmlLines.push('const playBtn = document.createElement(\'span\'); playBtn.className = \'play-btn\'; playBtn.textContent = ' + J(T.playBtn) + ';');
     htmlLines.push('overlay.appendChild(num); overlay.appendChild(playBtn); cell.appendChild(overlay);');
     htmlLines.push('cell.addEventListener(\'click\', () => { closeModal(levelModalOverlay); loadLevel(i); });');
-    htmlLines.push('} else {');
-    htmlLines.push('cell.classList.add(\'locked\');');
-    htmlLines.push('cell.textContent = (i + 1);');
-    htmlLines.push('const lock = document.createElement(\'span\'); lock.className = \'lock-icon\'; lock.textContent = \'🔒\'; cell.appendChild(lock);');
     htmlLines.push('}');
     htmlLines.push('levelGrid.appendChild(cell);');
     htmlLines.push('}');
@@ -1633,9 +1714,7 @@ function generateGameHTML(options) {
     htmlLines.push('hasMoreLevels = true;');
     htmlLines.push('isFirstLoad = true;');
     htmlLines.push('currentLevel = 0;');
-    htmlLines.push('coins = START_COINS;');
     htmlLines.push('gameCompleted = false;');
-    htmlLines.push('levelHistory = [];');
     htmlLines.push('gameOverArea.style.display = \'none\';');
     htmlLines.push('gameArea.style.display = \'block\';');
     htmlLines.push('loadMoreBtn.style.display = \'none\';');
@@ -1644,7 +1723,6 @@ function generateGameHTML(options) {
     htmlLines.push('totalLevels.textContent = allLevels.length;');
     htmlLines.push('const resumeLevel = allLevels.length > 0 ? Math.min(completedLevels.length, allLevels.length - 1) : 0;');
     htmlLines.push('if (allLevels.length === 0) { loadMoreLevels(true); } else { loadLevel(resumeLevel); }');
-    htmlLines.push('updateHistory();');
     htmlLines.push('}');
     htmlLines.push('');
     htmlLines.push('async function loadMoreLevels(force = false) {');
@@ -1750,7 +1828,7 @@ function generateGameHTML(options) {
     htmlLines.push('const btn = document.createElement(\'button\');');
     htmlLines.push('btn.className = \'letter-btn\';');
     htmlLines.push('if (tile.used) btn.classList.add(\'used\');');
-    htmlLines.push('btn.textContent = tile.letter;');
+    htmlLines.push('const btnLabel = document.createElement(\'span\'); btnLabel.className = \'btn-label\'; btnLabel.textContent = tile.letter; btn.appendChild(btnLabel);');
     htmlLines.push('btn.dataset.index = i;');
     htmlLines.push('btn.addEventListener(\'click\', () => onLetterClick(i));');
     htmlLines.push('letterGrid.appendChild(btn);');
@@ -1809,8 +1887,6 @@ function generateGameHTML(options) {
     htmlLines.push('document.querySelectorAll(\'.answer-slot\').forEach(el => el.classList.add(\'correct\'));');
     htmlLines.push('if (!alreadyCompleted) { coins += LEVEL_BONUS; updateCoins(); }');
     htmlLines.push('updateHintButtons();');
-    htmlLines.push('levelHistory.push({ levelIndex: currentLevel, passed: true });');
-    htmlLines.push('updateHistory();');
     htmlLines.push('scheduleAutoAdvance();');
     htmlLines.push('}');
     htmlLines.push('');
@@ -1826,7 +1902,7 @@ function generateGameHTML(options) {
     htmlLines.push('maybeShowInterstitial(() => { currentLevel++; loadLevel(currentLevel); });');
     htmlLines.push('}');
     htmlLines.push('');
-    htmlLines.push('function updateCoins() { coinDisplay.textContent = coins; }');
+    htmlLines.push('function updateCoins() { coinDisplay.textContent = coins; saveProgress(); }');
     htmlLines.push('');
     htmlLines.push('function updateHintButtons() {');
     htmlLines.push('const isLevelComplete = !nextBtn.disabled;');
@@ -1933,32 +2009,6 @@ function generateGameHTML(options) {
     htmlLines.push('progressText.textContent = ' + J(T.historyLevelLabel) + ' + (currentLevel+1) + ' + J(gameLang === 'en' ? ' of ' : ' из ') + ' + allLevels.length;');
     htmlLines.push('}');
     htmlLines.push('');
-    htmlLines.push('function updateHistory() {');
-    htmlLines.push('historyPanel.innerHTML = \'\';');
-    htmlLines.push('if (levelHistory.length === 0) {');
-    htmlLines.push('historyPanel.innerHTML = \'<div style="color:#555;padding:8px;">\' + ' + J(T.noHistory) + ' + \'</div>\';');
-    htmlLines.push('return;');
-    htmlLines.push('}');
-    htmlLines.push('for (let i=0; i<levelHistory.length; i++) {');
-    htmlLines.push('const entry = levelHistory[i];');
-    htmlLines.push('const div = document.createElement(\'div\');');
-    htmlLines.push('div.className = \'history-item\';');
-    htmlLines.push('const text = document.createElement(\'span\');');
-    htmlLines.push('text.textContent = ' + J(T.historyLevelLabel) + ' + (entry.levelIndex+1);');
-    htmlLines.push('div.appendChild(text);');
-    htmlLines.push('const status = document.createElement(\'span\');');
-    htmlLines.push('status.className = \'status\' + (entry.passed ? \'\' : \' fail\');');
-    htmlLines.push('status.textContent = entry.passed ? ' + J(T.historyPassed) + ' : ' + J(T.historyFailed) + ';');
-    htmlLines.push('div.appendChild(status);');
-    htmlLines.push('historyPanel.appendChild(div);');
-    htmlLines.push('}');
-    htmlLines.push('}');
-    htmlLines.push('');
-    htmlLines.push('historyToggle.addEventListener(\'click\', () => {');
-    htmlLines.push('historyPanel.classList.toggle(\'open\');');
-    htmlLines.push('if (historyPanel.classList.contains(\'open\')) updateHistory();');
-    htmlLines.push('});');
-    htmlLines.push('');
     htmlLines.push('initAds();');
     if (coinShopEnabled) {
         htmlLines.push('initYandexSDK();');
@@ -1972,10 +2022,12 @@ function generateGameHTML(options) {
         htmlLines.push('// ===== Режим live-редактора дизайна (только в конструкторе) =====');
         htmlLines.push('(function() {');
         htmlLines.push('const ROLE_MAP = [');
+        htmlLines.push('{ sel: \'.letter-btn .btn-label\', role: \'letterTextColor\' },');
+        htmlLines.push('{ sel: \'.level-pill .btn-label, .coins-pill .btn-label\', role: \'pillTextColor\' },');
+        htmlLines.push('{ sel: \'.action-btn .btn-label, .coin-buy-btn .btn-label, .load-more-btn .btn-label\', role: \'btnTextColor\' },');
         htmlLines.push('{ sel: \'.letter-btn\', role: \'letterBtnColor\' },');
         htmlLines.push('{ sel: \'.answer-slot\', role: \'btnColor\' },');
         htmlLines.push('{ sel: \'.coin-buy-btn, .action-btn, .load-more-btn\', role: \'btnColor\' },');
-        htmlLines.push('{ sel: \'.history-toggle\', role: \'letterBtnColor\' },');
         htmlLines.push('{ sel: \'.level-pill, .coins-pill\', role: \'pillColor\' },');
         htmlLines.push('{ sel: \'.icon-btn, .hint-row, .settings-menu-item\', role: \'textColor\' },');
         htmlLines.push('{ sel: \'.modal-box, .game-container\', role: \'cardColor\' },');
@@ -2045,6 +2097,97 @@ document.getElementById('closePreviewBtn').addEventListener('click', () => {
 // ============================================================
 // 6. Сохранение/загрузка проекта
 // ============================================================
+document.getElementById('downloadApkProjectBtn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('apkStatus');
+    const btn = document.getElementById('downloadApkProjectBtn');
+    if (typeof JSZip === 'undefined') {
+        statusEl.textContent = 'Не удалось загрузить библиотеку архивации (нужен интернет при первом открытии страницы). Попробуйте обновить страницу.';
+        return;
+    }
+    const stripYandex = document.getElementById('apkStripYandex').checked;
+    let gameHtml;
+    if (stripYandex) {
+        const savedAds = document.getElementById('adsEnabled').checked;
+        const savedCoins = document.getElementById('coinShopEnabled').checked;
+        document.getElementById('adsEnabled').checked = false;
+        document.getElementById('coinShopEnabled').checked = false;
+        gameHtml = generateGameHTML({ silent: true });
+        document.getElementById('adsEnabled').checked = savedAds;
+        document.getElementById('coinShopEnabled').checked = savedCoins;
+    } else {
+        gameHtml = generateGameHTML({ silent: true });
+    }
+    if (!gameHtml) {
+        statusEl.textContent = 'Добавьте хотя бы один уровень перед экспортом.';
+        return;
+    }
+    btn.disabled = true;
+    statusEl.textContent = 'Собираю архив...';
+
+    const rawTitle = (document.getElementById('gameTitle') && document.getElementById('gameTitle').value.trim()) || 'QuizGame';
+    const safeName = rawTitle.replace(/[^a-zA-Z0-9]/g, '') || 'QuizGame';
+    const appId = 'com.mygames.' + safeName.toLowerCase();
+
+    const zip = new JSZip();
+    zip.file('www/index.html', gameHtml);
+    zip.file('package.json', JSON.stringify({
+        name: safeName.toLowerCase(),
+        version: '1.0.0',
+        description: rawTitle,
+        scripts: { sync: 'cap sync android' },
+        dependencies: {
+            '@capacitor/core': '^6.0.0',
+            '@capacitor/android': '^6.0.0'
+        },
+        devDependencies: { '@capacitor/cli': '^6.0.0' }
+    }, null, 2));
+    zip.file('capacitor.config.json', JSON.stringify({
+        appId: appId,
+        appName: rawTitle,
+        webDir: 'www',
+        bundledWebRuntime: false
+    }, null, 2));
+    zip.file('README.txt',
+        'Проект для сборки Android-приложения (APK) на основе вашей игры "' + rawTitle + '"\r\n' +
+        '=====================================================================\r\n\r\n' +
+        'Этот архив НЕ содержит готовый APK — собрать сам APK можно только на вашем\r\n' +
+        'компьютере, где установлены Node.js и Android Studio (это бесплатно).\r\n\r\n' +
+        'Что понадобится один раз установить:\r\n' +
+        ' - Node.js: https://nodejs.org\r\n' +
+        ' - Android Studio (даёт нужный Android SDK): https://developer.android.com/studio\r\n\r\n' +
+        'Шаги сборки (выполнять в папке этого проекта, в терминале):\r\n' +
+        '  1) npm install\r\n' +
+        '  2) npx cap add android\r\n' +
+        '  3) npx cap sync android\r\n' +
+        '  4) cd android\r\n' +
+        '  5) ./gradlew assembleDebug      (Windows: gradlew.bat assembleDebug)\r\n\r\n' +
+        'Готовый файл появится здесь:\r\n' +
+        '  android/app/build/outputs/apk/debug/app-debug.apk\r\n\r\n' +
+        'Это debug-версия — она устанавливается на телефон и полностью работает,\r\n' +
+        'но для публикации в Google Play её нужно ещё подписать релизным ключом\r\n' +
+        '(Android Studio делает это через меню Build → Generate Signed Bundle/APK).\r\n\r\n' +
+        (stripYandex
+            ? 'Реклама РСЯ и покупки Яндекс Игр НЕ включены в эту сборку (как вы и просили) —\r\nона не зависит от площадки Яндекс Игр и подходит для Google Play / ВК Плей.\r\n'
+            : 'Внимание: в эту сборку включён код Yandex SDK (реклама/покупки) — он не\r\nбудет работать вне платформы Яндекс Игры. Для Google Play/ВК Плей лучше\r\nвключить галочку "не включать Yandex SDK" перед экспортом.\r\n')
+    );
+
+    try {
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = safeName + '-apk-project.zip';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        statusEl.textContent = 'Готово! Распакуйте архив и следуйте инструкции в README.txt.';
+    } catch (e) {
+        statusEl.textContent = 'Ошибка при создании архива: ' + e.message;
+    }
+    btn.disabled = false;
+});
+
 document.getElementById('saveProjectBtn').addEventListener('click', () => {
     const data = buildProjectData();
     const json = JSON.stringify(data, null, 2);
